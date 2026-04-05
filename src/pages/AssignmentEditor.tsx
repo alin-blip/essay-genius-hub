@@ -234,10 +234,46 @@ const AssignmentEditor = () => {
               {copied ? "Copied" : "Copy"}
             </Button>
 
-            <Button variant="outline" size="sm" onClick={handleExportTxt}>
-              <Download className="h-4 w-4 mr-1" />
-              Export TXT
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportTxt}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export as TXT
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (!activeContent || !assignment) return;
+                  exportToDocx({
+                    title: assignment.title,
+                    moduleName: assignment.module_name,
+                    content: activeContent,
+                    references: assignment.references_list,
+                  });
+                  toast({ title: "Downloaded as DOCX" });
+                }}>
+                  <FileType className="h-4 w-4 mr-2" />
+                  Export as DOCX
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (!activeContent || !assignment) return;
+                  exportToPdf({
+                    title: assignment.title,
+                    moduleName: assignment.module_name,
+                    content: activeContent,
+                    references: assignment.references_list,
+                  });
+                  toast({ title: "Downloaded as PDF" });
+                }}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Export as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardContent>
         </Card>
 
