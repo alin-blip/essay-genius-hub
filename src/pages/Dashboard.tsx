@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Settings,
   LogOut,
+  Trash2,
 } from "lucide-react";
 import {
   Table,
