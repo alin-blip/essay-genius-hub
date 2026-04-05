@@ -11,7 +11,6 @@ import {
   CheckCircle,
   Star,
   ArrowRight,
-  ChevronDown,
 } from "lucide-react";
 import {
   Accordion,
@@ -19,6 +18,76 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import SocialProofStats from "@/components/landing/SocialProofStats";
+import Testimonials from "@/components/landing/Testimonials";
+import UniversityLogos from "@/components/landing/UniversityLogos";
+import { useScrollReveal } from "@/hooks/useScrollReveal";
+
+function RevealSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const { ref, isVisible } = useScrollReveal();
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"} ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+const features = [
+  {
+    icon: BookOpen,
+    title: "Harvard & APA Referencing",
+    description: "Automatic citation formatting with real academic sources. Harvard, APA, OSCOLA — perfectly structured.",
+  },
+  {
+    icon: Shield,
+    title: "Advanced Humanization",
+    description: "Built-in paraphrasing engine ensures natural, human-like writing that passes all detection tools.",
+  },
+  {
+    icon: Award,
+    title: "Pass to Distinction",
+    description: "Choose your target grade — from Pass (40%) to First Class (70%+). AI adjusts complexity accordingly.",
+  },
+  {
+    icon: FileText,
+    title: "All Assignment Types",
+    description: "Essays, reports, case studies, reflective accounts, research projects, and full dissertations.",
+  },
+  {
+    icon: GraduationCap,
+    title: "UK University Standards",
+    description: "Tailored to HND Level 5, BSc Level 6, and MSc Level 7 academic requirements.",
+  },
+  {
+    icon: Star,
+    title: "Export Ready",
+    description: "Download as DOCX or PDF with proper formatting — Arial 12pt, 1.5 spacing, cover pages.",
+  },
+];
+
+const steps = [
+  { step: "01", title: "Paste Your Brief", description: "Enter your module name, assignment title, and paste the assignment brief from your university." },
+  { step: "02", title: "Set Your Requirements", description: "Choose your target grade, word count, referencing style, and any specific instructions." },
+  { step: "03", title: "Get Your Assignment", description: "AI generates your work with proper structure, references, and human-like writing quality." },
+];
+
+const plans = [
+  { name: "Starter", price: "£9.99", period: "/month", description: "For occasional assignments", features: ["5,000 words/month", "Essays & Reports", "Harvard Referencing", "DOCX Export"], highlighted: false },
+  { name: "Pro", price: "£19.99", period: "/month", description: "For regular coursework", features: ["15,000 words/month", "All Assignment Types", "Advanced Humanization", "Priority Generation", "PDF & DOCX Export"], highlighted: true },
+  { name: "Dissertation", price: "£49.99", period: "/month", description: "For final year projects", features: ["50,000 words/month", "Chapter-by-Chapter Builder", "Literature Review Support", "Methodology Guidance", "Unlimited Regenerations"], highlighted: false },
+];
+
+const faqs = [
+  { q: "Will my assignment be detected as AI-generated?", a: "Our advanced humanization engine rewrites content with natural sentence variation, academic hedging phrases, and varied vocabulary. The output reads like genuine student writing." },
+  { q: "Which UK universities do you support?", a: "We support all UK universities and courses. Our system adapts to the specific grading criteria and academic standards of your institution." },
+  { q: "What referencing styles are available?", a: "We support Harvard, APA, OSCOLA, Vancouver, and Chicago referencing styles with properly formatted in-text citations and reference lists." },
+  { q: "Can I edit the generated assignment?", a: "Yes! Our built-in editor lets you modify any section, regenerate specific parts, and fine-tune the content before exporting." },
+  { q: "How does the grading system work?", a: "Select your target grade (Pass, Merit, Distinction, or First Class) and our AI adjusts the writing complexity, critical analysis depth, and argumentation quality accordingly." },
+  { q: "Do you support dissertations?", a: "Yes! Our Dissertation plan includes a chapter-by-chapter builder covering introduction, literature review, methodology, findings, discussion, and conclusion." },
+];
 
 const Landing = () => {
   return (
@@ -33,6 +102,7 @@ const Landing = () => {
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+            <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Reviews</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
           </div>
@@ -51,7 +121,7 @@ const Landing = () => {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5" />
         <div className="container relative py-24 md:py-32 lg:py-40">
-          <div className="max-w-3xl mx-auto text-center space-y-8">
+          <div className="max-w-3xl mx-auto text-center space-y-8 animate-fade-in">
             <Badge variant="secondary" className="text-sm px-4 py-1.5">
               <Star className="h-3.5 w-3.5 mr-1.5 text-accent" />
               Trusted by 7,000+ UK students
@@ -62,8 +132,8 @@ const Landing = () => {
               Done Right
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              AI-powered academic writing tailored to UK university standards. 
-              From essays to dissertations — choose your grade level, paste your brief, 
+              AI-powered academic writing tailored to UK university standards.
+              From essays to dissertations — choose your grade level, paste your brief,
               and get publication-ready work in minutes.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -95,59 +165,39 @@ const Landing = () => {
         </div>
       </section>
 
+      {/* University Logos */}
+      <UniversityLogos />
+
+      {/* Social Proof Stats */}
+      <SocialProofStats />
+
       {/* Features */}
       <section id="features" className="py-20 md:py-28 bg-secondary/30">
         <div className="container">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-primary">
-              Everything You Need to Succeed
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Built specifically for UK university standards, covering every course and level.
-            </p>
-          </div>
+          <RevealSection>
+            <div className="text-center mb-16 space-y-4">
+              <p className="text-accent font-semibold text-sm uppercase tracking-wider">Features</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-primary">
+                Everything You Need to Succeed
+              </h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Built specifically for UK university standards, covering every course and level.
+              </p>
+            </div>
+          </RevealSection>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: BookOpen,
-                title: "Harvard & APA Referencing",
-                description: "Automatic citation formatting with real academic sources. Harvard, APA, OSCOLA — perfectly structured.",
-              },
-              {
-                icon: Shield,
-                title: "Advanced Humanization",
-                description: "Built-in paraphrasing engine ensures natural, human-like writing that passes all detection tools.",
-              },
-              {
-                icon: Award,
-                title: "Pass to Distinction",
-                description: "Choose your target grade — from Pass (40%) to First Class (70%+). AI adjusts complexity accordingly.",
-              },
-              {
-                icon: FileText,
-                title: "All Assignment Types",
-                description: "Essays, reports, case studies, reflective accounts, research projects, and full dissertations.",
-              },
-              {
-                icon: GraduationCap,
-                title: "UK University Standards",
-                description: "Tailored to HND Level 5, BSc Level 6, and MSc Level 7 academic requirements.",
-              },
-              {
-                icon: Star,
-                title: "Export Ready",
-                description: "Download as DOCX or PDF with proper formatting — Arial 12pt, 1.5 spacing, cover pages.",
-              },
-            ].map((feature, i) => (
-              <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-shadow bg-card">
-                <CardContent className="p-6 space-y-3">
-                  <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                    <feature.icon className="h-5 w-5 text-accent" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-foreground">{feature.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
-                </CardContent>
-              </Card>
+            {features.map((feature, i) => (
+              <RevealSection key={i}>
+                <Card className="border-0 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-1 bg-card h-full">
+                  <CardContent className="p-6 space-y-3">
+                    <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <feature.icon className="h-5 w-5 text-accent" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-foreground">{feature.title}</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
+                  </CardContent>
+                </Card>
+              </RevealSection>
             ))}
           </div>
         </div>
@@ -156,164 +206,110 @@ const Landing = () => {
       {/* How It Works */}
       <section id="how-it-works" className="py-20 md:py-28">
         <div className="container">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-primary">
-              Three Simple Steps
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              From brief to finished assignment in minutes, not days.
-            </p>
-          </div>
+          <RevealSection>
+            <div className="text-center mb-16 space-y-4">
+              <p className="text-accent font-semibold text-sm uppercase tracking-wider">How It Works</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-primary">Three Simple Steps</h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                From brief to finished assignment in minutes, not days.
+              </p>
+            </div>
+          </RevealSection>
           <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {[
-              {
-                step: "01",
-                title: "Paste Your Brief",
-                description: "Enter your module name, assignment title, and paste the assignment brief from your university.",
-              },
-              {
-                step: "02",
-                title: "Set Your Requirements",
-                description: "Choose your target grade, word count, referencing style, and any specific instructions.",
-              },
-              {
-                step: "03",
-                title: "Get Your Assignment",
-                description: "AI generates your work with proper structure, references, and human-like writing quality.",
-              },
-            ].map((item, i) => (
-              <div key={i} className="text-center space-y-4">
-                <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto">
-                  {item.step}
+            {steps.map((item, i) => (
+              <RevealSection key={i}>
+                <div className="text-center space-y-4">
+                  <div className="h-16 w-16 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto">
+                    {item.step}
+                  </div>
+                  <h3 className="text-xl font-semibold text-foreground">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{item.description}</p>
                 </div>
-                <h3 className="text-xl font-semibold text-foreground">{item.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{item.description}</p>
-              </div>
+              </RevealSection>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing Preview */}
-      <section id="pricing" className="py-20 md:py-28 bg-secondary/30">
+      {/* Testimonials */}
+      <div id="testimonials">
+        <Testimonials />
+      </div>
+
+      {/* Pricing */}
+      <section id="pricing" className="py-20 md:py-28">
         <div className="container">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-primary">
-              Simple, Transparent Pricing
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Start free. Upgrade when you need more.
-            </p>
-          </div>
+          <RevealSection>
+            <div className="text-center mb-16 space-y-4">
+              <p className="text-accent font-semibold text-sm uppercase tracking-wider">Pricing</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-primary">Simple, Transparent Pricing</h2>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Start free. Upgrade when you need more.</p>
+            </div>
+          </RevealSection>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              {
-                name: "Starter",
-                price: "£9.99",
-                period: "/month",
-                description: "For occasional assignments",
-                features: ["5,000 words/month", "Essays & Reports", "Harvard Referencing", "DOCX Export"],
-                highlighted: false,
-              },
-              {
-                name: "Pro",
-                price: "£19.99",
-                period: "/month",
-                description: "For regular coursework",
-                features: ["15,000 words/month", "All Assignment Types", "Advanced Humanization", "Priority Generation", "PDF & DOCX Export"],
-                highlighted: true,
-              },
-              {
-                name: "Dissertation",
-                price: "£49.99",
-                period: "/month",
-                description: "For final year projects",
-                features: ["50,000 words/month", "Chapter-by-Chapter Builder", "Literature Review Support", "Methodology Guidance", "Unlimited Regenerations"],
-                highlighted: false,
-              },
-            ].map((plan, i) => (
-              <Card key={i} className={`relative overflow-hidden ${plan.highlighted ? "border-accent shadow-lg scale-105" : "border shadow-sm"}`}>
-                {plan.highlighted && (
-                  <div className="absolute top-0 left-0 right-0 bg-accent text-accent-foreground text-center text-xs font-semibold py-1.5">
-                    MOST POPULAR
-                  </div>
-                )}
-                <CardContent className={`p-6 space-y-6 ${plan.highlighted ? "pt-10" : ""}`}>
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                    <p className="text-sm text-muted-foreground">{plan.description}</p>
-                  </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-primary">{plan.price}</span>
-                    <span className="text-muted-foreground text-sm">{plan.period}</span>
-                  </div>
-                  <ul className="space-y-2.5">
-                    {plan.features.map((f, j) => (
-                      <li key={j} className="flex items-center gap-2 text-sm text-foreground">
-                        <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className={`w-full ${plan.highlighted ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}`}
-                    variant={plan.highlighted ? "default" : "outline"}
-                    asChild
-                  >
-                    <Link to="/signup">Get Started</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+            {plans.map((plan, i) => (
+              <RevealSection key={i}>
+                <Card className={`relative overflow-hidden h-full ${plan.highlighted ? "border-accent shadow-lg scale-105" : "border shadow-sm"}`}>
+                  {plan.highlighted && (
+                    <div className="absolute top-0 left-0 right-0 bg-accent text-accent-foreground text-center text-xs font-semibold py-1.5">
+                      MOST POPULAR
+                    </div>
+                  )}
+                  <CardContent className={`p-6 space-y-6 ${plan.highlighted ? "pt-10" : ""}`}>
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
+                      <p className="text-sm text-muted-foreground">{plan.description}</p>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-bold text-primary">{plan.price}</span>
+                      <span className="text-muted-foreground text-sm">{plan.period}</span>
+                    </div>
+                    <ul className="space-y-2.5">
+                      {plan.features.map((f, j) => (
+                        <li key={j} className="flex items-center gap-2 text-sm text-foreground">
+                          <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className={`w-full ${plan.highlighted ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}`}
+                      variant={plan.highlighted ? "default" : "outline"}
+                      asChild
+                    >
+                      <Link to="/signup">Get Started</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </RevealSection>
             ))}
           </div>
         </div>
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="py-20 md:py-28">
+      <section id="faq" className="py-20 md:py-28 bg-secondary/30">
         <div className="container max-w-3xl">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-primary">
-              Frequently Asked Questions
-            </h2>
-          </div>
-          <Accordion type="single" collapsible className="w-full space-y-2">
-            {[
-              {
-                q: "Will my assignment be detected as AI-generated?",
-                a: "Our advanced humanization engine rewrites content with natural sentence variation, academic hedging phrases, and varied vocabulary. The output reads like genuine student writing.",
-              },
-              {
-                q: "Which UK universities do you support?",
-                a: "We support all UK universities and courses. Our system adapts to the specific grading criteria and academic standards of your institution.",
-              },
-              {
-                q: "What referencing styles are available?",
-                a: "We support Harvard, APA, OSCOLA, Vancouver, and Chicago referencing styles with properly formatted in-text citations and reference lists.",
-              },
-              {
-                q: "Can I edit the generated assignment?",
-                a: "Yes! Our built-in editor lets you modify any section, regenerate specific parts, and fine-tune the content before exporting.",
-              },
-              {
-                q: "How does the grading system work?",
-                a: "Select your target grade (Pass, Merit, Distinction, or First Class) and our AI adjusts the writing complexity, critical analysis depth, and argumentation quality accordingly.",
-              },
-              {
-                q: "Do you support dissertations?",
-                a: "Yes! Our Dissertation plan includes a chapter-by-chapter builder covering introduction, literature review, methodology, findings, discussion, and conclusion.",
-              },
-            ].map((item, i) => (
-              <AccordionItem key={i} value={`item-${i}`} className="border rounded-lg px-4">
-                <AccordionTrigger className="text-left font-medium text-foreground hover:no-underline">
-                  {item.q}
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground leading-relaxed">
-                  {item.a}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+          <RevealSection>
+            <div className="text-center mb-16 space-y-4">
+              <p className="text-accent font-semibold text-sm uppercase tracking-wider">FAQ</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-primary">Frequently Asked Questions</h2>
+            </div>
+          </RevealSection>
+          <RevealSection>
+            <Accordion type="single" collapsible className="w-full space-y-2">
+              {faqs.map((item, i) => (
+                <AccordionItem key={i} value={`item-${i}`} className="border rounded-lg px-4">
+                  <AccordionTrigger className="text-left font-medium text-foreground hover:no-underline">
+                    {item.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-muted-foreground leading-relaxed">
+                    {item.a}
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          </RevealSection>
         </div>
       </section>
 
