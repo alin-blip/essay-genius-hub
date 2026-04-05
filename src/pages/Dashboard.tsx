@@ -80,6 +80,18 @@ const Dashboard = () => {
     fetchData();
   }, [user]);
 
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("assignments").delete().eq("id", deleteTarget.id);
+    if (error) {
+      toast.error("Failed to delete assignment");
+    } else {
+      setAssignments((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+      toast.success("Assignment deleted");
+    }
+    setDeleteTarget(null);
+  };
+
   const handleLogout = async () => {
     await signOut();
     navigate("/");
