@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -18,8 +19,12 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // TODO: Supabase auth login
-    toast({ title: "Login", description: "Authentication will be connected soon." });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      toast({ title: "Login Failed", description: error.message, variant: "destructive" });
+    } else {
+      navigate("/dashboard");
+    }
     setLoading(false);
   };
 
