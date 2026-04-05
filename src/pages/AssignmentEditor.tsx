@@ -14,10 +14,19 @@ import {
   Download,
   FileDown,
   LetterText,
+  FileType,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { exportToDocx } from "@/lib/export-docx";
+import { exportToPdf } from "@/lib/export-pdf";
 
 const GRADE_LABELS: Record<string, string> = {
   pass: "Pass",
@@ -225,10 +234,46 @@ const AssignmentEditor = () => {
               {copied ? "Copied" : "Copy"}
             </Button>
 
-            <Button variant="outline" size="sm" onClick={handleExportTxt}>
-              <Download className="h-4 w-4 mr-1" />
-              Export TXT
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-1" />
+                  Export
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportTxt}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export as TXT
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (!activeContent || !assignment) return;
+                  exportToDocx({
+                    title: assignment.title,
+                    moduleName: assignment.module_name,
+                    content: activeContent,
+                    references: assignment.references_list,
+                  });
+                  toast({ title: "Downloaded as DOCX" });
+                }}>
+                  <FileType className="h-4 w-4 mr-2" />
+                  Export as DOCX
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (!activeContent || !assignment) return;
+                  exportToPdf({
+                    title: assignment.title,
+                    moduleName: assignment.module_name,
+                    content: activeContent,
+                    references: assignment.references_list,
+                  });
+                  toast({ title: "Downloaded as PDF" });
+                }}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Export as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </CardContent>
         </Card>
 
