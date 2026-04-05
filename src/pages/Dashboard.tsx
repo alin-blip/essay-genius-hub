@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,6 @@ import {
   CreditCard,
   Award,
   TrendingUp,
-  Clock,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -21,23 +21,73 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const STATUS_COLORS: Record<string, string> = {
-  Draft: "bg-muted text-muted-foreground",
-  Generating: "bg-accent/20 text-accent-foreground",
-  Completed: "bg-green-100 text-green-800",
+  draft: "bg-muted text-muted-foreground",
+  generating: "bg-accent/20 text-accent-foreground",
+  completed: "bg-green-100 text-green-800",
 };
 
-const MOCK_ASSIGNMENTS = [
-  { id: "1", title: "HRM Strategy Analysis", module: "Unit 5 - HRM", type: "Essay", wordCount: 3000, grade: "Merit", status: "Completed", date: "2026-04-02" },
-  { id: "2", title: "Construction Site Safety Report", module: "Unit 12 - H&S", type: "Report", wordCount: 4500, grade: "Distinction", status: "Completed", date: "2026-04-01" },
-  { id: "3", title: "Business Plan Analysis", module: "Unit 3 - Business", type: "Case Study", wordCount: 2500, grade: "Pass", status: "Draft", date: "2026-03-30" },
-];
+const LEVEL_LABELS: Record<string, string> = {
+  hnd_level5: "HND Level 5",
+  bsc_level6: "BSc Level 6",
+  msc_level7: "MSc Level 7",
+};
+
+const GRADE_LABELS: Record<string, string> = {
+  pass: "Pass",
+  merit: "Merit",
+  distinction_lower: "2:1",
+  distinction: "First",
+};
 
 const Dashboard = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<any>(null);
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      const [profileRes, assignmentsRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", user.id).single(),
+        supabase.from("assignments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+      ]);
+
+      if (profileRes.data) setProfile(profileRes.data);
+      if (assignmentsRes.data) setAssignments(assignmentsRes.data);
+      setLoading(false);
+    };
+
+    fetchData();
+  }, [user]);
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const thisMonthCount = assignments.filter((a) => {
+    const d = new Date(a.created_at);
+    const now = new Date();
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-secondary/20">
-      {/* Top Nav */}
       <nav className="border-b bg-background sticky top-0 z-50">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-2">
@@ -48,7 +98,7 @@ const Dashboard = () => {
             <Button variant="ghost" size="sm" asChild>
               <Link to="/settings"><Settings className="h-4 w-4 mr-1" /> Settings</Link>
             </Button>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-1" /> Logout
             </Button>
           </div>
@@ -56,11 +106,14 @@ const Dashboard = () => {
       </nav>
 
       <div className="container py-8 space-y-8">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Welcome back! 👋</h1>
-            <p className="text-muted-foreground">BSc Level 6 · Construction Management</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              Welcome back{profile?.full_name ? `, ${profile.full_name}` : ""}! 👋
+            </h1>
+            <p className="text-muted-foreground">
+              {LEVEL_LABELS[profile?.university_level] || "Student"} · {profile?.course_name || "No course set"}
+            </p>
           </div>
           <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
             <Link to="/new-assignment">
@@ -70,13 +123,12 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { icon: CreditCard, label: "Credits Remaining", value: "5,000", sub: "words" },
-            { icon: FileText, label: "Assignments This Month", value: "3", sub: "completed" },
-            { icon: Award, label: "Average Grade Target", value: "Merit", sub: "60-69%" },
-            { icon: TrendingUp, label: "Subscription", value: "Free", sub: "5,000 words/mo" },
+            { icon: CreditCard, label: "Credits Remaining", value: (profile?.credits_balance ?? 0).toLocaleString(), sub: "words" },
+            { icon: FileText, label: "Assignments This Month", value: String(thisMonthCount), sub: "completed" },
+            { icon: Award, label: "Total Assignments", value: String(assignments.length), sub: "all time" },
+            { icon: TrendingUp, label: "Subscription", value: (profile?.subscription_plan || "free").charAt(0).toUpperCase() + (profile?.subscription_plan || "free").slice(1), sub: profile?.subscription_plan === "free" ? "5,000 words/mo" : "Active" },
           ].map((stat, i) => (
             <Card key={i}>
               <CardContent className="p-4 flex items-start gap-3">
@@ -93,14 +145,12 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Assignments Table */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">Recent Assignments</CardTitle>
-            <Button variant="ghost" size="sm" className="text-accent">View All</Button>
           </CardHeader>
           <CardContent>
-            {MOCK_ASSIGNMENTS.length > 0 ? (
+            {assignments.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -114,19 +164,25 @@ const Dashboard = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {MOCK_ASSIGNMENTS.map((a) => (
-                    <TableRow key={a.id} className="cursor-pointer hover:bg-muted/50">
+                  {assignments.map((a) => (
+                    <TableRow
+                      key={a.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => navigate(`/assignment/${a.id}`)}
+                    >
                       <TableCell className="font-medium">{a.title}</TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">{a.module}</TableCell>
-                      <TableCell className="hidden md:table-cell">{a.type}</TableCell>
-                      <TableCell>{a.wordCount.toLocaleString()}</TableCell>
-                      <TableCell>{a.grade}</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">{a.module_name || "—"}</TableCell>
+                      <TableCell className="hidden md:table-cell capitalize">{a.assignment_type?.replace(/_/g, " ")}</TableCell>
+                      <TableCell>{a.word_count?.toLocaleString()}</TableCell>
+                      <TableCell>{GRADE_LABELS[a.target_grade] || a.target_grade}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className={STATUS_COLORS[a.status]}>
-                          {a.status}
+                        <Badge variant="secondary" className={STATUS_COLORS[a.status] || ""}>
+                          {a.status?.charAt(0).toUpperCase() + a.status?.slice(1)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">{a.date}</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
+                        {new Date(a.created_at).toLocaleDateString()}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

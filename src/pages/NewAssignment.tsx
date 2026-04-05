@@ -158,7 +158,7 @@ const NewAssignment = () => {
           title: "Assignment Generated! ✨",
           description: `${data.credits_used} credits used. ${data.credits_remaining} remaining.`,
         });
-        navigate("/dashboard");
+        navigate(`/assignment/${data.assignment_id}`);
       }, 1000);
     } catch (err: any) {
       setGenerating(false);
