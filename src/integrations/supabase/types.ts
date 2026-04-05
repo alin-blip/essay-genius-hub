@@ -14,7 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assignments: {
+        Row: {
+          additional_instructions: string | null
+          assignment_brief: string | null
+          assignment_type: string
+          created_at: string
+          generated_content: string | null
+          humanized_content: string | null
+          id: string
+          include_case_studies: boolean
+          include_harvard_refs: boolean
+          module_name: string | null
+          references_list: string | null
+          status: string
+          target_grade: string
+          title: string
+          unit_number: string | null
+          updated_at: string
+          user_id: string
+          word_count: number
+        }
+        Insert: {
+          additional_instructions?: string | null
+          assignment_brief?: string | null
+          assignment_type?: string
+          created_at?: string
+          generated_content?: string | null
+          humanized_content?: string | null
+          id?: string
+          include_case_studies?: boolean
+          include_harvard_refs?: boolean
+          module_name?: string | null
+          references_list?: string | null
+          status?: string
+          target_grade?: string
+          title: string
+          unit_number?: string | null
+          updated_at?: string
+          user_id: string
+          word_count?: number
+        }
+        Update: {
+          additional_instructions?: string | null
+          assignment_brief?: string | null
+          assignment_type?: string
+          created_at?: string
+          generated_content?: string | null
+          humanized_content?: string | null
+          id?: string
+          include_case_studies?: boolean
+          include_harvard_refs?: boolean
+          module_name?: string | null
+          references_list?: string | null
+          status?: string
+          target_grade?: string
+          title?: string
+          unit_number?: string | null
+          updated_at?: string
+          user_id?: string
+          word_count?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          course_name: string | null
+          created_at: string
+          credits_balance: number
+          full_name: string | null
+          id: string
+          subscription_plan: string
+          university: string | null
+          university_level: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          course_name?: string | null
+          created_at?: string
+          credits_balance?: number
+          full_name?: string | null
+          id?: string
+          subscription_plan?: string
+          university?: string | null
+          university_level?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          course_name?: string | null
+          created_at?: string
+          credits_balance?: number
+          full_name?: string | null
+          id?: string
+          subscription_plan?: string
+          university?: string | null
+          university_level?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
