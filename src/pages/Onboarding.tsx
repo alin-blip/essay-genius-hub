@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { GraduationCap, ArrowRight, ArrowLeft, CheckCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const LEVELS = [
   { value: "hnd_level5", label: "HND Level 5" },
@@ -37,19 +39,44 @@ const Onboarding = () => {
   const [level, setLevel] = useState("");
   const [course, setCourse] = useState("");
   const [university, setUniversity] = useState("");
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const handleComplete = async () => {
-    // TODO: Save profile to Supabase
-    toast({ title: "Profile Complete!", description: "Your academic profile has been saved." });
+    if (!user) {
+      toast({ title: "Please log in", variant: "destructive" });
+      navigate("/login");
+      return;
+    }
+
+    setSaving(true);
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        university_level: level,
+        course_name: course,
+        university: university,
+      })
+      .eq("user_id", user.id);
+
+    setSaving(false);
+
+    if (error) {
+      console.error("Profile save error:", error);
+      toast({ title: "Failed to save profile", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Profile Complete! ✨", description: "Your academic profile has been saved." });
     navigate("/dashboard");
   };
 
   const canProceed = () => {
     if (step === 1) return !!level;
     if (step === 2) return !!course;
-    if (step === 3) return !!university;
+    if (step === 3) return university.trim().length > 0;
     return false;
   };
 
@@ -144,11 +171,11 @@ const Onboarding = () => {
               ) : (
                 <Button
                   onClick={handleComplete}
-                  disabled={!canProceed()}
+                  disabled={!canProceed() || saving}
                   className="bg-accent text-accent-foreground hover:bg-accent/90"
                 >
-                  Complete Setup
-                  <CheckCircle className="h-4 w-4 ml-2" />
+                  {saving ? "Saving..." : "Complete Setup"}
+                  {!saving && <CheckCircle className="h-4 w-4 ml-2" />}
                 </Button>
               )}
             </div>
