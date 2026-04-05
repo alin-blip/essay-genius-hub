@@ -12,6 +12,7 @@ import {
   TrendingUp,
   Settings,
   LogOut,
+  Trash2,
 } from "lucide-react";
 import {
   Table,
@@ -23,6 +24,17 @@ import {
 } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -49,6 +61,7 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<any>(null);
   const [assignments, setAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -66,6 +79,18 @@ const Dashboard = () => {
 
     fetchData();
   }, [user]);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    const { error } = await supabase.from("assignments").delete().eq("id", deleteTarget.id);
+    if (error) {
+      toast.error("Failed to delete assignment");
+    } else {
+      setAssignments((prev) => prev.filter((a) => a.id !== deleteTarget.id));
+      toast.success("Assignment deleted");
+    }
+    setDeleteTarget(null);
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -161,6 +186,7 @@ const Dashboard = () => {
                     <TableHead>Grade</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="hidden md:table-cell">Date</TableHead>
+                    <TableHead className="w-10"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -183,6 +209,19 @@ const Dashboard = () => {
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         {new Date(a.created_at).toLocaleDateString()}
                       </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget({ id: a.id, title: a.title });
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -203,6 +242,23 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "<strong>{deleteTarget?.title}</strong>"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
