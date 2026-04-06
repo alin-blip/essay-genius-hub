@@ -16,10 +16,13 @@ import {
   CheckCircle,
   Sparkles,
   CreditCard,
+  AlertTriangle,
+  Crown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { Link as RouterLink } from "react-router-dom";
 
 const ASSIGNMENT_TYPES = [
   { value: "essay", label: "Essay" },
@@ -67,13 +70,20 @@ const NewAssignment = () => {
   const [progressValue, setProgressValue] = useState(0);
   const [progressMessage, setProgressMessage] = useState(PROGRESS_MESSAGES[0]);
   const [creditsAvailable, setCreditsAvailable] = useState(5000);
+  const [monthlyCount, setMonthlyCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
   const progressInterval = useRef<ReturnType<typeof setInterval>>();
+
+  const monthlyLimit = subscription.planTier?.assignmentsPerMonth ?? null;
+  const isAtLimit = monthlyLimit !== null && monthlyCount >= monthlyLimit;
 
   useEffect(() => {
     if (user) {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
       supabase
         .from("profiles")
         .select("credits_balance")
@@ -81,6 +91,15 @@ const NewAssignment = () => {
         .single()
         .then(({ data }) => {
           if (data) setCreditsAvailable(data.credits_balance);
+        });
+
+      supabase
+        .from("assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .gte("created_at", startOfMonth)
+        .then(({ count }) => {
+          setMonthlyCount(count ?? 0);
         });
     }
   }, [user]);
@@ -250,6 +269,25 @@ const NewAssignment = () => {
 
         <Progress value={(step / 4) * 100} className="h-2" />
 
+        {isAtLimit && (
+          <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground">Monthly limit reached</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                You've used {monthlyCount} of {monthlyLimit} assignments this month on your{" "}
+                <span className="font-medium">{subscription.planTier?.name}</span> plan.
+                Upgrade to get more assignments.
+              </p>
+              <Button size="sm" className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90" asChild>
+                <Link to="/plans">
+                  <Crown className="h-4 w-4 mr-1" /> Upgrade Plan
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>
@@ -399,8 +437,8 @@ const NewAssignment = () => {
                   Next <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button onClick={handleGenerate} className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={creditsAvailable < creditCost}>
-                  <Sparkles className="h-4 w-4 mr-2" /> Generate Assignment
+                <Button onClick={handleGenerate} className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={creditsAvailable < creditCost || isAtLimit}>
+                  <Sparkles className="h-4 w-4 mr-2" /> {isAtLimit ? "Limit Reached" : "Generate Assignment"}
                 </Button>
               )}
             </div>
