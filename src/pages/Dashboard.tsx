@@ -224,7 +224,41 @@ const Dashboard = () => {
           ))}
         </div>
 
-        {/* Subscription management */}
+        {/* Monthly Usage Indicator */}
+        {monthlyLimit !== null && (
+          <Card className={usagePercent! >= 100 ? "border-destructive/50 bg-destructive/5" : usagePercent! >= 80 ? "border-amber-500/30 bg-amber-50/50" : ""}>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {usagePercent! >= 100 ? (
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4 text-accent" />
+                  )}
+                  <span className="text-sm font-medium text-foreground">Monthly Usage</span>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {thisMonthCount} / {monthlyLimit} assignments
+                </span>
+              </div>
+              <Progress value={usagePercent!} className="h-2" />
+              {usagePercent! >= 100 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-destructive">You've reached your monthly limit.</p>
+                  <Button asChild size="sm" variant="outline" className="border-accent/30 text-accent hover:bg-accent/10">
+                    <Link to="/plans">
+                      <Crown className="h-3 w-3 mr-1" />
+                      Upgrade
+                    </Link>
+                  </Button>
+                </div>
+              )}
+              {usagePercent! >= 80 && usagePercent! < 100 && (
+                <p className="text-xs text-amber-600">You're almost at your monthly limit. {monthlyLimit - thisMonthCount} assignments remaining.</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
         {isSubscribed && (
           <div className="flex gap-3">
             <Button variant="outline" size="sm" onClick={handleCustomerPortal}>
