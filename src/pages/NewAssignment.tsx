@@ -78,7 +78,6 @@ const NewAssignment = () => {
 
   const monthlyLimit = subscription.planTier?.assignmentsPerMonth ?? null;
   const isAtLimit = monthlyLimit !== null && monthlyCount >= monthlyLimit;
-  const progressInterval = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
     if (user) {
