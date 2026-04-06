@@ -86,6 +86,8 @@ const Dashboard = () => {
 
   const filteredAssignments = assignments
     .filter((a) => {
+      if (filterType !== "all" && a.assignment_type !== filterType) return false;
+      if (filterGrade !== "all" && a.target_grade !== filterGrade) return false;
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
