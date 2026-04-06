@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   GraduationCap, Plus, FileText, CreditCard, Award, TrendingUp,
   Settings, LogOut, Trash2, Sparkles, Crown, AlertTriangle,
+  Search, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
