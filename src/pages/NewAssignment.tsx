@@ -70,9 +70,14 @@ const NewAssignment = () => {
   const [progressValue, setProgressValue] = useState(0);
   const [progressMessage, setProgressMessage] = useState(PROGRESS_MESSAGES[0]);
   const [creditsAvailable, setCreditsAvailable] = useState(5000);
+  const [monthlyCount, setMonthlyCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
+  const progressInterval = useRef<ReturnType<typeof setInterval>>();
+
+  const monthlyLimit = subscription.planTier?.assignmentsPerMonth ?? null;
+  const isAtLimit = monthlyLimit !== null && monthlyCount >= monthlyLimit;
   const progressInterval = useRef<ReturnType<typeof setInterval>>();
 
   useEffect(() => {
