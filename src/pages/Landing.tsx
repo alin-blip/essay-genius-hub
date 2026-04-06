@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,8 @@ import {
   CheckCircle,
   Star,
   ArrowRight,
+  Menu,
+  X,
 } from "lucide-react";
 import {
   Accordion,
@@ -90,6 +93,16 @@ const faqs = [
 ];
 
 const Landing = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navLinks = [
+    { href: "#features", label: "Features" },
+    { href: "#how-it-works", label: "How It Works" },
+    { href: "#testimonials", label: "Reviews" },
+    { href: "#pricing", label: "Pricing" },
+    { href: "#faq", label: "FAQ" },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -100,21 +113,55 @@ const Landing = () => {
             <span className="text-xl font-bold text-primary">AssignmentPro</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-            <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Reviews</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</a>
+            {navLinks.map((link) => (
+              <a key={link.href} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                {link.label}
+              </a>
+            ))}
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" asChild className="hidden sm:inline-flex">
               <Link to="/login">Log In</Link>
             </Button>
-            <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+            <Button asChild className="hidden sm:inline-flex bg-accent text-accent-foreground hover:bg-accent/90">
               <Link to="/signup">Get Started</Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
         </div>
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t bg-background animate-fade-in">
+            <div className="container py-4 flex flex-col gap-3">
+              {navLinks.map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors py-2"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {link.label}
+                </a>
+              ))}
+              <div className="flex flex-col gap-2 pt-2 border-t">
+                <Button variant="ghost" asChild>
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>Log In</Link>
+                </Button>
+                <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
+                  <Link to="/signup" onClick={() => setMobileMenuOpen(false)}>Get Started</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero */}
