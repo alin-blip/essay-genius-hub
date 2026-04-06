@@ -307,6 +307,9 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* Usage History Chart */}
+        <UsageHistoryChart assignments={allAssignments as Tables<"assignments">[]} />
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-lg">Recent Assignments</CardTitle>
