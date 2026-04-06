@@ -128,7 +128,7 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const thisMonthCount = assignments.filter((a) => {
+  const thisMonthCount = allAssignments.filter((a) => {
     const d = new Date(a.created_at);
     const now = new Date();
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
@@ -136,6 +136,27 @@ const Dashboard = () => {
 
   const monthlyLimit = subscription.planTier?.assignmentsPerMonth ?? null;
   const usagePercent = monthlyLimit ? Math.min((thisMonthCount / monthlyLimit) * 100, 100) : null;
+
+  // Send email notification at 80% usage
+  useEffect(() => {
+    if (!user || !profile || limitEmailSent || !monthlyLimit) return;
+    if (usagePercent !== null && usagePercent >= 80 && usagePercent < 100) {
+      setLimitEmailSent(true);
+      supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "usage-limit-warning",
+          recipientEmail: user.email,
+          idempotencyKey: `usage-limit-${user.id}-${new Date().getFullYear()}-${new Date().getMonth()}`,
+          templateData: {
+            name: profile.full_name || undefined,
+            used: thisMonthCount,
+            limit: monthlyLimit,
+            planName: subscription.planTier?.name,
+          },
+        },
+      });
+    }
+  }, [usagePercent, user, profile, limitEmailSent, monthlyLimit, thisMonthCount, subscription.planTier?.name]);
 
   if (loading) {
     return (
