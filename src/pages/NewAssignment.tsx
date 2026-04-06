@@ -437,8 +437,8 @@ const NewAssignment = () => {
                   Next <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button onClick={handleGenerate} className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={creditsAvailable < creditCost}>
-                  <Sparkles className="h-4 w-4 mr-2" /> Generate Assignment
+                <Button onClick={handleGenerate} className="bg-accent text-accent-foreground hover:bg-accent/90" disabled={creditsAvailable < creditCost || isAtLimit}>
+                  <Sparkles className="h-4 w-4 mr-2" /> {isAtLimit ? "Limit Reached" : "Generate Assignment"}
                 </Button>
               )}
             </div>
