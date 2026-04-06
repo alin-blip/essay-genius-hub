@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Tables } from "@/integrations/supabase/types";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
