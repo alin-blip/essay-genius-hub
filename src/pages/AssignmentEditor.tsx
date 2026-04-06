@@ -104,7 +104,7 @@ const AssignmentEditor = () => {
 
       setHumanizeProgress(100);
       setTimeout(() => {
-        setAssignment((prev: any) => ({ ...prev, humanized_content: data.humanized_content }));
+        setAssignment((prev) => prev ? { ...prev, humanized_content: data.humanized_content } : prev);
         setShowHumanized(true);
         setHumanizing(false);
         toast({
