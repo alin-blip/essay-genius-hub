@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import NewAssignment from "./pages/NewAssignment.tsx";
 import AssignmentEditor from "./pages/AssignmentEditor.tsx";
 import Settings from "./pages/Settings.tsx";
+import Unsubscribe from "./pages/Unsubscribe.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/new-assignment" element={<ProtectedRoute><NewAssignment /></ProtectedRoute>} />
