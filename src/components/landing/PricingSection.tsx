@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { CheckCircle, Users, GraduationCap, Sparkles } from "lucide-react";
-import { getStudentTiers, getAgentTiers, MANAGER_ADDON, type TierConfig } from "@/lib/subscription-tiers";
+import { CheckCircle, Users, GraduationCap, Sparkles, Crown } from "lucide-react";
+import { getStudentTiers, getAgentTiers, MANAGER_ADDONS, type TierConfig } from "@/lib/subscription-tiers";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 function RevealSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
