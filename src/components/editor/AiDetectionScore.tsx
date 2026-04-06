@@ -62,22 +62,37 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
     return "High AI Detection Risk";
   };
 
-  if (!result) {
+  if (!result && !checking) {
     return (
       <Button
         variant="outline"
         size="sm"
         onClick={handleCheck}
-        disabled={checking || !content}
+        disabled={!content}
         className="gap-1"
       >
-        {checking ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Shield className="h-4 w-4" />
-        )}
-        {checking ? "Checking..." : "AI Detection Score"}
+        <Shield className="h-4 w-4" />
+        AI Detection Score
       </Button>
+    );
+  }
+
+  if (!result && checking) {
+    return (
+      <Card className="border border-accent/30 bg-accent/5 animate-fade-in">
+        <CardContent className="p-3 flex items-center gap-3">
+          <div className="relative flex items-center justify-center h-8 w-8">
+            <Shield className="h-5 w-5 text-accent animate-pulse" />
+            <div className="absolute inset-0 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <p className="text-sm font-medium text-foreground">Scanning for AI patterns...</p>
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div className="h-full rounded-full bg-accent/60 animate-[pulse_1.5s_ease-in-out_infinite] w-2/3" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
