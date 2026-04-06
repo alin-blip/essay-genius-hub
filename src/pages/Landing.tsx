@@ -281,55 +281,7 @@ const Landing = () => {
       </div>
 
       {/* Pricing */}
-      <section id="pricing" className="py-20 md:py-28">
-        <div className="container">
-          <RevealSection>
-            <div className="text-center mb-16 space-y-4">
-              <p className="text-accent font-semibold text-sm uppercase tracking-wider">Pricing</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-primary">Simple, Transparent Pricing</h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">Start free. Upgrade when you need more.</p>
-            </div>
-          </RevealSection>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {plans.map((plan, i) => (
-              <RevealSection key={i}>
-                <Card className={`relative overflow-hidden h-full ${plan.highlighted ? "border-accent shadow-lg scale-105" : "border shadow-sm"}`}>
-                  {plan.highlighted && (
-                    <div className="absolute top-0 left-0 right-0 bg-accent text-accent-foreground text-center text-xs font-semibold py-1.5">
-                      MOST POPULAR
-                    </div>
-                  )}
-                  <CardContent className={`p-6 space-y-6 ${plan.highlighted ? "pt-10" : ""}`}>
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">{plan.name}</h3>
-                      <p className="text-sm text-muted-foreground">{plan.description}</p>
-                    </div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-bold text-primary">{plan.price}</span>
-                      <span className="text-muted-foreground text-sm">{plan.period}</span>
-                    </div>
-                    <ul className="space-y-2.5">
-                      {plan.features.map((f, j) => (
-                        <li key={j} className="flex items-center gap-2 text-sm text-foreground">
-                          <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" />
-                          {f}
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      className={`w-full ${plan.highlighted ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}`}
-                      variant={plan.highlighted ? "default" : "outline"}
-                      asChild
-                    >
-                      <Link to="/signup">Get Started</Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </RevealSection>
-            ))}
-          </div>
-        </div>
-      </section>
+      <PricingSection />
 
       {/* FAQ */}
       <section id="faq" className="py-20 md:py-28 bg-secondary/30">
