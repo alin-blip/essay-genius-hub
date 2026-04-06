@@ -65,6 +65,8 @@ const Dashboard = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<"title" | "created_at" | "status">("created_at");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterGrade, setFilterGrade] = useState<string>("all");
   const ITEMS_PER_PAGE = 10;
 
   const handleSort = (key: typeof sortKey) => {
