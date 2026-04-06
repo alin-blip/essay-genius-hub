@@ -24,6 +24,10 @@ import { toast } from "sonner";
 import { MANAGER_ADDONS } from "@/lib/subscription-tiers";
 import { Progress } from "@/components/ui/progress";
 import UsageHistoryChart from "@/components/dashboard/UsageHistoryChart";
+import {
+  Pagination, PaginationContent, PaginationItem, PaginationLink,
+  PaginationNext, PaginationPrevious, PaginationEllipsis,
+} from "@/components/ui/pagination";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
