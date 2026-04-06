@@ -60,6 +60,8 @@ const Dashboard = () => {
   const [showUpsell, setShowUpsell] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [limitEmailSent, setLimitEmailSent] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   // Show upsell after successful checkout
   useEffect(() => {
