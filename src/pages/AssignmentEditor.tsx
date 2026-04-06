@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Tables } from "@/integrations/supabase/types";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -40,7 +41,7 @@ const AssignmentEditor = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [assignment, setAssignment] = useState<any>(null);
+  const [assignment, setAssignment] = useState<Tables<'assignments'> | null>(null);
   const [loading, setLoading] = useState(true);
   const [humanizing, setHumanizing] = useState(false);
   const [humanizeProgress, setHumanizeProgress] = useState(0);
@@ -103,7 +104,7 @@ const AssignmentEditor = () => {
 
       setHumanizeProgress(100);
       setTimeout(() => {
-        setAssignment((prev: any) => ({ ...prev, humanized_content: data.humanized_content }));
+        setAssignment((prev) => prev ? { ...prev, humanized_content: data.humanized_content } : prev);
         setShowHumanized(true);
         setHumanizing(false);
         toast({

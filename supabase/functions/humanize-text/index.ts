@@ -77,10 +77,14 @@ serve(async (req) => {
 
     const { assignment_id, content } = await req.json();
 
-    if (!assignment_id || !content) {
-      return new Response(JSON.stringify({ error: "Missing assignment_id or content" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    if (!assignment_id || typeof assignment_id !== "string") {
+      return new Response(JSON.stringify({ error: "Invalid or missing assignment_id" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!content || typeof content !== "string" || content.length > 100000) {
+      return new Response(JSON.stringify({ error: "Invalid or missing content" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
