@@ -15,6 +15,7 @@ import NewAssignment from "./pages/NewAssignment.tsx";
 import AssignmentEditor from "./pages/AssignmentEditor.tsx";
 import AdminDashboardPage from "./pages/AdminDashboard.tsx";
 import Settings from "./pages/Settings.tsx";
+import Plans from "./pages/Plans.tsx";
 import Unsubscribe from "./pages/Unsubscribe.tsx";
 import AffiliateApply from "./pages/AffiliateApply.tsx";
 import AffiliateDashboard from "./pages/AffiliateDashboard.tsx";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/assignment/:id" element={<ProtectedRoute><AssignmentEditor /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

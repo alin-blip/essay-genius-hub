@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { GraduationCap, ArrowLeft, Save, KeyRound } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { GraduationCap, ArrowLeft, Save, KeyRound, Crown, ExternalLink, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 
 const LEVELS = [
   { value: "hnd_level5", label: "HND Level 5" },
@@ -32,7 +34,7 @@ const COURSES = [
 ];
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -204,6 +206,74 @@ const Settings = () => {
                 {changingPassword ? "Updating..." : "Update Password"}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Subscription Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-accent" />
+              Subscription
+            </CardTitle>
+            <CardDescription>Manage your plan and billing</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Current Plan</p>
+                <p className="text-foreground font-medium flex items-center gap-2">
+                  {subscription.planTier?.name || "Free"}
+                  {subscription.subscribed && <Badge className="bg-accent/10 text-accent text-xs">Active</Badge>}
+                </p>
+              </div>
+              <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link to="/plans">
+                  {subscription.subscribed ? "Change Plan" : "Upgrade"}
+                </Link>
+              </Button>
+            </div>
+            {subscription.subscribed && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Renews on</p>
+                    <p className="text-foreground">
+                      {subscription.subscriptionEnd
+                        ? new Date(subscription.subscriptionEnd).toLocaleDateString()
+                        : "—"}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const { data, error } = await supabase.functions.invoke("customer-portal");
+                        if (error) throw error;
+                        if (data?.url) window.open(data.url, "_blank");
+                      } catch (err: any) {
+                        sonnerToast.error(err.message || "Failed to open billing portal");
+                      }
+                    }}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-1" /> Billing Portal
+                  </Button>
+                </div>
+                {subscription.hasManagerAddon && (
+                  <>
+                    <Separator />
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-accent" />
+                      <p className="text-sm text-foreground">
+                        Assignment Manager: <span className="font-medium capitalize">{subscription.managerTier?.replace("_", " ")}</span>
+                      </p>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 
