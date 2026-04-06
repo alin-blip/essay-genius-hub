@@ -126,17 +126,17 @@ const AffiliateDashboard = () => {
         </div>
 
         {affiliate?.status === "pending" && (
-          <Card className="mb-6 border-yellow-200 bg-yellow-50">
+          <Card className="mb-6 border-accent/30 bg-accent/5">
             <CardContent className="pt-6">
-              <p className="text-yellow-800">Your application is under review. We'll notify you once it's approved.</p>
+              <p className="text-foreground">Your application is under review. We'll notify you once it's approved.</p>
             </CardContent>
           </Card>
         )}
 
         {affiliate?.status === "rejected" && (
-          <Card className="mb-6 border-red-200 bg-red-50">
+          <Card className="mb-6 border-destructive/30 bg-destructive/5">
             <CardContent className="pt-6">
-              <p className="text-red-800">Your application was not approved. Please contact support for more details.</p>
+              <p className="text-destructive">Your application was not approved. Please contact support for more details.</p>
             </CardContent>
           </Card>
         )}

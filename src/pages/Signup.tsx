@@ -41,6 +41,26 @@ const Signup = () => {
     if (error) {
       toast({ title: "Signup Failed", description: error.message, variant: "destructive" });
     } else {
+      // Link referral if applicable
+      const refCode = localStorage.getItem("ref_code");
+      const refTs = localStorage.getItem("ref_ts");
+      const isValid = refCode && refTs && Date.now() - parseInt(refTs) < 30 * 24 * 60 * 60 * 1000;
+      if (isValid) {
+        // Fire-and-forget: look up affiliate and insert referral
+        supabase
+          .from("affiliates")
+          .select("id")
+          .eq("affiliate_code", refCode)
+          .eq("status", "approved")
+          .maybeSingle()
+          .then(({ data: aff }) => {
+            if (aff) {
+              // We need the new user's ID. Since email confirmation is required,
+              // we'll store the ref info and link on first login instead.
+              localStorage.setItem("ref_affiliate_id", aff.id);
+            }
+          });
+      }
       toast({ title: "Check your email", description: "We've sent you a confirmation link to verify your account." });
     }
     setLoading(false);
