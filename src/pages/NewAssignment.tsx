@@ -269,6 +269,25 @@ const NewAssignment = () => {
 
         <Progress value={(step / 4) * 100} className="h-2" />
 
+        {isAtLimit && (
+          <div className="rounded-lg border-2 border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-foreground">Monthly limit reached</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                You've used {monthlyCount} of {monthlyLimit} assignments this month on your{" "}
+                <span className="font-medium">{subscription.planTier?.name}</span> plan.
+                Upgrade to get more assignments.
+              </p>
+              <Button size="sm" className="mt-3 bg-accent text-accent-foreground hover:bg-accent/90" asChild>
+                <Link to="/plans">
+                  <Crown className="h-4 w-4 mr-1" /> Upgrade Plan
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>
