@@ -58,8 +58,8 @@ const GRADE_LABELS: Record<string, string> = {
 const Dashboard = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<any>(null);
-  const [assignments, setAssignments] = useState<any[]>([]);
+  const [profile, setProfile] = useState<Tables<'profiles'> | null>(null);
+  const [assignments, setAssignments] = useState<Tables<'assignments'>[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
 
