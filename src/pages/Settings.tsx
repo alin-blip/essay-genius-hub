@@ -34,7 +34,7 @@ const COURSES = [
 ];
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
