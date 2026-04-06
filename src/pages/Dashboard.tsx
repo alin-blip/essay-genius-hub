@@ -185,7 +185,7 @@ const Dashboard = () => {
                 </div>
               </div>
               <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                <Link to="/#pricing">View Plans</Link>
+                <Link to="/plans">View Plans</Link>
               </Button>
             </CardContent>
           </Card>
