@@ -125,6 +125,9 @@ const Dashboard = () => {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
 
+  const monthlyLimit = subscription.planTier?.assignmentsPerMonth ?? null;
+  const usagePercent = monthlyLimit ? Math.min((thisMonthCount / monthlyLimit) * 100, 100) : null;
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
