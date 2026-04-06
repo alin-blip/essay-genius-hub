@@ -81,6 +81,9 @@ const NewAssignment = () => {
 
   useEffect(() => {
     if (user) {
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
       supabase
         .from("profiles")
         .select("credits_balance")
@@ -88,6 +91,15 @@ const NewAssignment = () => {
         .single()
         .then(({ data }) => {
           if (data) setCreditsAvailable(data.credits_balance);
+        });
+
+      supabase
+        .from("assignments")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .gte("created_at", startOfMonth)
+        .then(({ count }) => {
+          setMonthlyCount(count ?? 0);
         });
     }
   }, [user]);
