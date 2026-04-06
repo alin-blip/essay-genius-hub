@@ -7,7 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MANAGER_PRODUCT_ID = "prod_UHinoHKxoNq82E";
+const MANAGER_PRODUCT_IDS: Record<string, string> = {
+  "prod_UHinoHKxoNq82E": "monthly",
+  "prod_UHitFVNwfJgmvv": "academic_year",
+  "prod_UHitoIAkNJKLoL": "final_year",
+};
 
 const TIER_CREDITS: Record<string, number> = {
   prod_UHinD1B3zVPt72: 6000,    // Student Basic
@@ -83,12 +87,14 @@ serve(async (req) => {
     let planProductId: string | null = null;
     let subscriptionEnd: string | null = null;
     let hasManagerAddon = false;
+    let managerTier: string | null = null;
 
     for (const sub of subscriptions.data) {
       for (const item of sub.items.data) {
         const prodId = typeof item.price.product === "string" ? item.price.product : (item.price.product as any).id;
-        if (prodId === MANAGER_PRODUCT_ID) {
+        if (MANAGER_PRODUCT_IDS[prodId]) {
           hasManagerAddon = true;
+          managerTier = MANAGER_PRODUCT_IDS[prodId];
         } else if (TIER_CREDITS[prodId] !== undefined) {
           planProductId = prodId;
           subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
@@ -114,6 +120,7 @@ serve(async (req) => {
       product_id: planProductId,
       subscription_end: subscriptionEnd,
       has_manager_addon: hasManagerAddon,
+      manager_tier: managerTier,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

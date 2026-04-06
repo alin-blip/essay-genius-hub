@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getTierByProductId, type TierConfig } from "@/lib/subscription-tiers";
+import { getTierByProductId, type TierConfig, type ManagerAddonKey } from "@/lib/subscription-tiers";
 
 interface SubscriptionState {
   subscribed: boolean;
   planTier: TierConfig | null;
   hasManagerAddon: boolean;
+  managerTier: ManagerAddonKey | null;
   subscriptionEnd: string | null;
   loading: boolean;
 }
@@ -24,7 +25,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
-  subscription: { subscribed: false, planTier: null, hasManagerAddon: false, subscriptionEnd: null, loading: true },
+  subscription: { subscribed: false, planTier: null, hasManagerAddon: false, managerTier: null, subscriptionEnd: null, loading: true },
   refreshSubscription: async () => {},
   signOut: async () => {},
 });
@@ -36,7 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionState>({
-    subscribed: false, planTier: null, hasManagerAddon: false, subscriptionEnd: null, loading: true,
+    subscribed: false, planTier: null, hasManagerAddon: false, managerTier: null, subscriptionEnd: null, loading: true,
   });
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
@@ -49,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         subscribed: !!data?.subscribed,
         planTier: tier || null,
         hasManagerAddon: !!data?.has_manager_addon,
+        managerTier: data?.manager_tier || null,
         subscriptionEnd: data?.subscription_end || null,
         loading: false,
       });
@@ -79,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (!session?.user) {
-        setSubscription({ subscribed: false, planTier: null, hasManagerAddon: false, subscriptionEnd: null, loading: false });
+        setSubscription({ subscribed: false, planTier: null, hasManagerAddon: false, managerTier: null, subscriptionEnd: null, loading: false });
       }
     });
 

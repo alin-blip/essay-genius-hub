@@ -21,7 +21,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MANAGER_ADDON } from "@/lib/subscription-tiers";
+import { MANAGER_ADDONS } from "@/lib/subscription-tiers";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -333,29 +333,44 @@ const Dashboard = () => {
 
       {/* Manager Upsell Dialog */}
       <Dialog open={showUpsell} onOpenChange={setShowUpsell}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-accent" />
               Assignment Manager
             </DialogTitle>
-            <DialogDescription>{MANAGER_ADDON.description}</DialogDescription>
+            <DialogDescription>Let a real person handle your assignments — from generation to upload.</DialogDescription>
           </DialogHeader>
-          <div className="py-4 text-center">
-            <p className="text-3xl font-bold text-primary">£{MANAGER_ADDON.priceGBP}<span className="text-base font-normal text-muted-foreground">/month</span></p>
+          <div className="grid sm:grid-cols-3 gap-4 py-4">
+            {MANAGER_ADDONS.map((addon) => (
+              <Card key={addon.key} className={`relative ${addon.highlighted ? "border-accent shadow-md" : "border"}`}>
+                {addon.highlighted && (
+                  <div className="absolute top-0 left-0 right-0 bg-accent text-accent-foreground text-center text-[10px] font-semibold py-1">
+                    BEST VALUE
+                  </div>
+                )}
+                <CardContent className={`p-4 space-y-3 ${addon.highlighted ? "pt-8" : ""}`}>
+                  <h4 className="font-semibold text-sm text-foreground">{addon.name}</h4>
+                  <p className="text-2xl font-bold text-primary">£{addon.priceGBP}<span className="text-xs font-normal text-muted-foreground">{addon.billing}</span></p>
+                  <p className="text-xs text-muted-foreground">{addon.description}</p>
+                  <Button
+                    size="sm"
+                    className={`w-full ${addon.highlighted ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}`}
+                    variant={addon.highlighted ? "default" : "outline"}
+                    disabled={checkoutLoading}
+                    onClick={() => {
+                      setShowUpsell(false);
+                      handleCheckout(addon.priceId);
+                    }}
+                  >
+                    Choose
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUpsell(false)}>Maybe Later</Button>
-            <Button
-              className="bg-accent text-accent-foreground hover:bg-accent/90"
-              disabled={checkoutLoading}
-              onClick={() => {
-                setShowUpsell(false);
-                handleCheckout(MANAGER_ADDON.priceId);
-              }}
-            >
-              Add Assignment Manager
-            </Button>
+            <Button variant="ghost" onClick={() => setShowUpsell(false)}>Maybe Later</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

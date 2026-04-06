@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
-import { CheckCircle, Users, GraduationCap, Sparkles } from "lucide-react";
-import { getStudentTiers, getAgentTiers, MANAGER_ADDON, type TierConfig } from "@/lib/subscription-tiers";
+import { CheckCircle, Users, GraduationCap, Sparkles, Crown } from "lucide-react";
+import { getStudentTiers, getAgentTiers, MANAGER_ADDONS, type TierConfig } from "@/lib/subscription-tiers";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 function RevealSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -114,28 +114,53 @@ export default function PricingSection() {
           ))}
         </div>
 
-        {/* Manager Add-on */}
+        {/* Manager Add-on Options */}
         <RevealSection>
-          <div className="max-w-2xl mx-auto mt-16">
-            <Card className="border-accent/30 bg-accent/5">
-              <CardContent className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="h-6 w-6 text-accent" />
-                </div>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground">{MANAGER_ADDON.name}</h3>
-                    <Badge variant="secondary" className="text-xs">Add-on</Badge>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{MANAGER_ADDON.description}</p>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xl font-bold text-primary">£{MANAGER_ADDON.priceGBP}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="text-center mt-20 mb-8 space-y-2">
+            <p className="text-accent font-semibold text-sm uppercase tracking-wider">Add-on</p>
+            <h3 className="text-2xl font-bold text-primary">Assignment Manager</h3>
+            <p className="text-muted-foreground max-w-xl mx-auto">Let a real person handle everything — from generating your assignments to uploading them to your university portal.</p>
           </div>
         </RevealSection>
+
+        <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          {MANAGER_ADDONS.map((addon) => (
+            <RevealSection key={addon.key}>
+              <Card className={`relative overflow-hidden h-full ${addon.highlighted ? "border-accent shadow-lg scale-105" : "border shadow-sm"}`}>
+                {addon.highlighted && (
+                  <div className="absolute top-0 left-0 right-0 bg-accent text-accent-foreground text-center text-xs font-semibold py-1.5">
+                    BEST VALUE
+                  </div>
+                )}
+                <CardContent className={`p-6 space-y-5 ${addon.highlighted ? "pt-10" : ""}`}>
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">{addon.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{addon.description}</p>
+                  </div>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-3xl font-bold text-primary">£{addon.priceGBP}</span>
+                    <span className="text-muted-foreground text-sm">{addon.billing}</span>
+                  </div>
+                  <ul className="space-y-2.5">
+                    {addon.features.map((f, j) => (
+                      <li key={j} className="flex items-center gap-2 text-sm text-foreground">
+                        <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" />
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className={`w-full ${addon.highlighted ? "bg-accent text-accent-foreground hover:bg-accent/90" : ""}`}
+                    variant={addon.highlighted ? "default" : "outline"}
+                    asChild
+                  >
+                    <Link to="/signup">Get Started</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </RevealSection>
+          ))}
+        </div>
       </div>
     </section>
   );

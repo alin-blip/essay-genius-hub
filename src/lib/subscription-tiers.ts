@@ -116,13 +116,77 @@ export const TIERS: Record<string, TierConfig> = {
   },
 };
 
-export const MANAGER_ADDON = {
-  name: "Assignment Manager",
-  priceId: "price_1TJ9LtBCjwwzvAvijnb0ivSE",
-  productId: "prod_UHinoHKxoNq82E",
-  priceGBP: 100,
-  description: "A real person manages your assignments — generates, exports, uploads to your university portal, and sends you status updates.",
-};
+export type ManagerAddonKey = "monthly" | "academic_year" | "final_year";
+
+export interface ManagerAddonConfig {
+  key: ManagerAddonKey;
+  name: string;
+  priceId: string;
+  productId: string;
+  priceGBP: number;
+  billing: string;
+  description: string;
+  features: string[];
+  highlighted?: boolean;
+}
+
+export const MANAGER_ADDONS: ManagerAddonConfig[] = [
+  {
+    key: "monthly",
+    name: "Monthly Manager",
+    priceId: "price_1TJ9LtBCjwwzvAvijnb0ivSE",
+    productId: "prod_UHinoHKxoNq82E",
+    priceGBP: 100,
+    billing: "/mo",
+    description: "A real person manages your assignments monthly — generates, exports, and uploads to your university portal.",
+    features: [
+      "Assignments generated for you",
+      "Exported & uploaded to portal",
+      "Monthly status updates",
+    ],
+  },
+  {
+    key: "academic_year",
+    name: "Academic Year",
+    priceId: "price_1TJ9RpBCjwwzvAvigJUnzuMb",
+    productId: "prod_UHitFVNwfJgmvv",
+    priceGBP: 499,
+    billing: "/year",
+    description: "All assignments for the full academic year — done and uploaded for you.",
+    features: [
+      "All assignments done for you",
+      "Full academic year coverage",
+      "Exported & uploaded to portal",
+      "Priority status updates",
+    ],
+    highlighted: true,
+  },
+  {
+    key: "final_year",
+    name: "Final Year + Dissertation",
+    priceId: "price_1TJ9RqBCjwwzvAvigJLUvdbA",
+    productId: "prod_UHitoIAkNJKLoL",
+    priceGBP: 997,
+    billing: "/year",
+    description: "Everything in Academic Year plus your dissertation and final project — for Level 6 students.",
+    features: [
+      "All assignments done for you",
+      "Dissertation & final project included",
+      "Full academic year coverage",
+      "Exported & uploaded to portal",
+      "Dedicated support",
+    ],
+  },
+];
+
+// Keep backward-compat reference
+export const MANAGER_ADDON = MANAGER_ADDONS[0];
+
+export const MANAGER_PRODUCT_IDS = MANAGER_ADDONS.map((a) => a.productId);
+
+export function getManagerAddonByProductId(productId: string): ManagerAddonConfig | undefined {
+  return MANAGER_ADDONS.find((a) => a.productId === productId);
+}
 
 export function getTierByProductId(productId: string): TierConfig | undefined {
   return Object.values(TIERS).find((t) => t.productId === productId);
