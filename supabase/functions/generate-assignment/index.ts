@@ -113,10 +113,28 @@ serve(async (req) => {
       include_case_studies,
     } = body;
 
-    if (!title || !assignment_type || !target_grade || !word_count) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Validate required fields and ranges
+    const VALID_TYPES = ["essay", "report", "case_study", "reflective_account", "research_project", "literature_review", "dissertation", "presentation"];
+    const VALID_GRADES = ["pass", "merit", "distinction_lower", "distinction"];
+
+    if (!title || typeof title !== "string" || title.length > 500) {
+      return new Response(JSON.stringify({ error: "Invalid or missing title" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!VALID_TYPES.includes(assignment_type)) {
+      return new Response(JSON.stringify({ error: "Invalid assignment type" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!VALID_GRADES.includes(target_grade)) {
+      return new Response(JSON.stringify({ error: "Invalid target grade" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (typeof word_count !== "number" || word_count < 100 || word_count > 10000) {
+      return new Response(JSON.stringify({ error: "Word count must be between 100 and 10,000" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
