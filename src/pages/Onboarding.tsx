@@ -70,6 +70,19 @@ const Onboarding = () => {
     }
 
     toast({ title: "Profile Complete! ✨", description: "Your academic profile has been saved." });
+
+    // Send welcome email (fire-and-forget)
+    if (user.email) {
+      supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "welcome",
+          recipientEmail: user.email,
+          idempotencyKey: `welcome-${user.id}`,
+          templateData: { name: user.user_metadata?.full_name || "" },
+        },
+      }).catch((err) => console.error("Welcome email failed:", err));
+    }
+
     navigate("/dashboard");
   };
 

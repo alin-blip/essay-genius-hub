@@ -152,6 +152,39 @@ const NewAssignment = () => {
       setProgressValue(100);
       setProgressMessage("Assignment complete!");
 
+      // Send assignment-ready email (fire-and-forget)
+      if (user.email) {
+        supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "assignment-ready",
+            recipientEmail: user.email,
+            idempotencyKey: `assignment-ready-${data.assignment_id}`,
+            templateData: {
+              name: user.user_metadata?.full_name || "",
+              assignmentTitle: title,
+              wordCount: wordCount[0],
+              targetGrade,
+              assignmentId: data.assignment_id,
+            },
+          },
+        }).catch((err) => console.error("Assignment ready email failed:", err));
+      }
+
+      // Send low-credits warning if below threshold
+      if (data.credits_remaining < 500 && user.email) {
+        supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "low-credits",
+            recipientEmail: user.email,
+            idempotencyKey: `low-credits-${user.id}-${data.credits_remaining}`,
+            templateData: {
+              name: user.user_metadata?.full_name || "",
+              creditsRemaining: data.credits_remaining,
+            },
+          },
+        }).catch((err) => console.error("Low credits email failed:", err));
+      }
+
       setTimeout(() => {
         setGenerating(false);
         toast({
