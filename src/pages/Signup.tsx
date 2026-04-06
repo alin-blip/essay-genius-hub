@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,17 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // Capture referral code from URL
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      localStorage.setItem("ref_code", ref);
+      localStorage.setItem("ref_ts", Date.now().toString());
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +41,26 @@ const Signup = () => {
     if (error) {
       toast({ title: "Signup Failed", description: error.message, variant: "destructive" });
     } else {
+      // Link referral if applicable
+      const refCode = localStorage.getItem("ref_code");
+      const refTs = localStorage.getItem("ref_ts");
+      const isValid = refCode && refTs && Date.now() - parseInt(refTs) < 30 * 24 * 60 * 60 * 1000;
+      if (isValid) {
+        // Fire-and-forget: look up affiliate and insert referral
+        supabase
+          .from("affiliates")
+          .select("id")
+          .eq("affiliate_code", refCode)
+          .eq("status", "approved")
+          .maybeSingle()
+          .then(({ data: aff }) => {
+            if (aff) {
+              // We need the new user's ID. Since email confirmation is required,
+              // we'll store the ref info and link on first login instead.
+              localStorage.setItem("ref_affiliate_id", aff.id);
+            }
+          });
+      }
       toast({ title: "Check your email", description: "We've sent you a confirmation link to verify your account." });
     }
     setLoading(false);
