@@ -50,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         subscribed: !!data?.subscribed,
         planTier: tier || null,
         hasManagerAddon: !!data?.has_manager_addon,
+        managerTier: data?.manager_tier || null,
         subscriptionEnd: data?.subscription_end || null,
         loading: false,
       });
