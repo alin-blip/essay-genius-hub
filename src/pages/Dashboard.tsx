@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { MANAGER_ADDONS } from "@/lib/subscription-tiers";
+import { Progress } from "@/components/ui/progress";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
