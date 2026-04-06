@@ -19,11 +19,20 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error, data } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       toast({ title: "Login Failed", description: error.message, variant: "destructive" });
-    } else {
-      navigate("/dashboard");
+    } else if (data.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("university_level, course_name, university")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+      if (profile?.university_level && profile?.course_name && profile?.university) {
+        navigate("/dashboard");
+      } else {
+        navigate("/onboarding");
+      }
     }
     setLoading(false);
   };
