@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
 
       if (!session?.user) {
-        setSubscription({ subscribed: false, planTier: null, hasManagerAddon: false, subscriptionEnd: null, loading: false });
+        setSubscription({ subscribed: false, planTier: null, hasManagerAddon: false, managerTier: null, subscriptionEnd: null, loading: false });
       }
     });
 

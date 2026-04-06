@@ -120,6 +120,7 @@ serve(async (req) => {
       product_id: planProductId,
       subscription_end: subscriptionEnd,
       has_manager_addon: hasManagerAddon,
+      manager_tier: managerTier,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
