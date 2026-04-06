@@ -1,41 +1,57 @@
 
 
-# Plan: Transactional Emails for AssignmentPro
+# Affiliate Program — 30% Recurring Commission via Stripe Connect
 
-## Emails Identified
+## How It Works
 
-Based on the app's user flows, these are the transactional emails needed:
+1. Anyone can apply to become an affiliate through a public `/affiliate` page
+2. After approval, they connect their Stripe account (via Stripe Connect Express)
+3. They get a unique referral link like `assignmentpro.co.uk/?ref=CODE`
+4. When someone signs up through that link and subscribes, the affiliate earns **30% recurring commission** every month the referred user pays
+5. Commission is transferred automatically to the affiliate's bank account via Stripe
 
-1. **Welcome Email** — sent after a user completes onboarding (profile setup), welcoming them to AssignmentPro
-2. **Assignment Ready Email** — sent after an assignment is successfully generated, notifying the user their essay is ready to view/download
-3. **Low Credits Warning** — sent when a user's credits drop below a threshold (e.g., 500 words remaining) after generating an assignment
+## Database (3 new tables)
 
-## Technical Steps
+**`affiliates`** — stores affiliate applications and status
+- user_id, affiliate_code (unique), stripe_connect_account_id, status (pending/approved/rejected), commission_rate (default 0.30), application details (website, social_media, reason)
 
-### Step 1: Scaffold transactional email infrastructure
-- Call the transactional email scaffolding tool to create the Edge Functions (`send-transactional-email`, `handle-email-unsubscribe`, `handle-email-suppression`) and the template registry
+**`referrals`** — tracks which users were referred by which affiliate
+- affiliate_id → affiliates, referred_user_id, status (signed_up/subscribed/churned)
 
-### Step 2: Create 3 email templates
-Create React Email templates in `supabase/functions/_shared/transactional-email-templates/`:
+**`affiliate_payouts`** — logs every commission transfer
+- affiliate_id, stripe_transfer_id, amount (pence), currency, status
 
-- **`welcome.tsx`** — "Welcome to AssignmentPro" with user's name, brief intro, CTA to dashboard
-- **`assignment-ready.tsx`** — "Your Assignment is Ready" with assignment title, word count, grade target, CTA to view it
-- **`low-credits.tsx`** — "You're Running Low on Credits" with remaining balance, CTA to upgrade
+RLS: affiliates can only read their own data. Service role handles writes from edge functions.
 
-All templates will use AssignmentPro branding: dark blue `#1a365d` primary, gold `#d4a843` accent, white `#ffffff` background, Inter font family.
+## Stripe Connect Setup
 
-### Step 3: Register templates in registry.ts
-Add all 3 templates to the `TEMPLATES` map in `registry.ts`.
+- Use **Stripe Connect Express** accounts for affiliates
+- Edge function creates Connect account + onboarding link
+- On each subscription payment (`invoice.payment_succeeded` webhook), calculate 30% and create a `Transfer` to the affiliate's connected account
 
-### Step 4: Wire up triggers in the app
+## New Pages
 
-- **Welcome**: In `Onboarding.tsx`, after successful profile save, invoke `send-transactional-email` with `welcome` template
-- **Assignment Ready**: In `NewAssignment.tsx`, after successful generation, invoke `send-transactional-email` with `assignment-ready` template and pass title/word count/grade as templateData
-- **Low Credits**: In `NewAssignment.tsx`, after generation, check if `credits_remaining < 500` and send the low-credits email
+1. **`/affiliate`** — Public application form (name, website/social, why they want to join). Requires an AssignmentPro account.
+2. **`/affiliate/dashboard`** — Protected page showing: referral link, click stats, total referrals, earnings this month / lifetime, payout history, Stripe Connect onboarding button
 
-### Step 5: Create unsubscribe page
-Create a branded `/unsubscribe` page that validates tokens and lets users opt out of app emails.
+## New Edge Functions
 
-### Step 6: Deploy all edge functions
-Deploy `send-transactional-email`, `handle-email-unsubscribe`, `handle-email-suppression`.
+1. **`affiliate-connect`** — Creates Stripe Connect Express account + returns onboarding URL
+2. **`affiliate-webhook`** — Stripe webhook for `invoice.payment_succeeded`: looks up referral → calculates 30% → creates Stripe Transfer → logs payout
+
+## Referral Tracking
+
+- Signup page reads `?ref=CODE` from URL, stores in localStorage (30-day persistence)
+- After successful account creation, inserts row in `referrals` linking new user to affiliate
+- When the referred user subscribes, the webhook handles commission automatically
+
+## Implementation Order
+
+1. Create 3 database tables with RLS policies
+2. Build `/affiliate` application page
+3. Build `/affiliate/dashboard` with stats
+4. Create `affiliate-connect` edge function (Stripe Connect Express onboarding)
+5. Create `affiliate-webhook` edge function (commission calculation + transfers)
+6. Wire referral tracking into Signup page (`?ref=` param → localStorage → referrals table)
+7. Deploy all edge functions
 
