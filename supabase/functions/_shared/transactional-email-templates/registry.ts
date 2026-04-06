@@ -12,9 +12,11 @@ export interface TemplateEntry {
 import { template as welcome } from './welcome.tsx'
 import { template as assignmentReady } from './assignment-ready.tsx'
 import { template as lowCredits } from './low-credits.tsx'
+import { template as usageLimitWarning } from './usage-limit-warning.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome': welcome,
   'assignment-ready': assignmentReady,
   'low-credits': lowCredits,
+  'usage-limit-warning': usageLimitWarning,
 }

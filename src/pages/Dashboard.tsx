@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { MANAGER_ADDONS } from "@/lib/subscription-tiers";
 import { Progress } from "@/components/ui/progress";
+import UsageHistoryChart from "@/components/dashboard/UsageHistoryChart";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -49,10 +50,12 @@ const Dashboard = () => {
   const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
   const [assignments, setAssignments] = useState<Tables<"assignments">[]>([]);
+  const [allAssignments, setAllAssignments] = useState<Tables<"assignments">[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [showUpsell, setShowUpsell] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [limitEmailSent, setLimitEmailSent] = useState(false);
 
   // Show upsell after successful checkout
   useEffect(() => {
@@ -67,12 +70,17 @@ const Dashboard = () => {
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
-      const [profileRes, assignmentsRes] = await Promise.all([
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const [profileRes, recentRes, allRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", user.id).single(),
         supabase.from("assignments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+        supabase.from("assignments").select("id, created_at").eq("user_id", user.id).gte("created_at", sixMonthsAgo.toISOString()).order("created_at", { ascending: false }),
       ]);
       if (profileRes.data) setProfile(profileRes.data);
-      if (assignmentsRes.data) setAssignments(assignmentsRes.data);
+      if (recentRes.data) setAssignments(recentRes.data);
+      if (allRes.data) setAllAssignments(allRes.data as any);
       setLoading(false);
     };
     fetchData();
@@ -120,7 +128,7 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const thisMonthCount = assignments.filter((a) => {
+  const thisMonthCount = allAssignments.filter((a) => {
     const d = new Date(a.created_at);
     const now = new Date();
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
@@ -128,6 +136,27 @@ const Dashboard = () => {
 
   const monthlyLimit = subscription.planTier?.assignmentsPerMonth ?? null;
   const usagePercent = monthlyLimit ? Math.min((thisMonthCount / monthlyLimit) * 100, 100) : null;
+
+  // Send email notification at 80% usage
+  useEffect(() => {
+    if (!user || !profile || limitEmailSent || !monthlyLimit) return;
+    if (usagePercent !== null && usagePercent >= 80 && usagePercent < 100) {
+      setLimitEmailSent(true);
+      supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "usage-limit-warning",
+          recipientEmail: user.email,
+          idempotencyKey: `usage-limit-${user.id}-${new Date().getFullYear()}-${new Date().getMonth()}`,
+          templateData: {
+            name: profile.full_name || undefined,
+            used: thisMonthCount,
+            limit: monthlyLimit,
+            planName: subscription.planTier?.name,
+          },
+        },
+      });
+    }
+  }, [usagePercent, user, profile, limitEmailSent, monthlyLimit, thisMonthCount, subscription.planTier?.name]);
 
   if (loading) {
     return (
@@ -277,6 +306,9 @@ const Dashboard = () => {
             )}
           </div>
         )}
+
+        {/* Usage History Chart */}
+        <UsageHistoryChart assignments={allAssignments as Tables<"assignments">[]} />
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
