@@ -15,6 +15,8 @@ import NewAssignment from "./pages/NewAssignment.tsx";
 import AssignmentEditor from "./pages/AssignmentEditor.tsx";
 import Settings from "./pages/Settings.tsx";
 import Unsubscribe from "./pages/Unsubscribe.tsx";
+import AffiliateApply from "./pages/AffiliateApply.tsx";
+import AffiliateDashboard from "./pages/AffiliateDashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
