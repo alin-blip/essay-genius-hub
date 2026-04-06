@@ -149,10 +149,10 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: HUMANIZE_PROMPT },
-          { role: "user", content: `Rewrite the following academic text to sound like a genuine student wrote it. Preserve all references, arguments, and meaning:\n\n${content}` },
+          { role: "user", content: `Rewrite this academic text so AI detectors score it below 15%. You are a student rewriting your own draft because it sounded too robotic. Keep all references, arguments, facts, and the same word count. Make it sound like YOU wrote it — messy, human, real:\n\n${content}` },
         ],
       }),
     });
