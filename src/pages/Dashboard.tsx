@@ -62,7 +62,43 @@ const Dashboard = () => {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [limitEmailSent, setLimitEmailSent] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortKey, setSortKey] = useState<"title" | "created_at" | "status">("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const ITEMS_PER_PAGE = 10;
+
+  const handleSort = (key: typeof sortKey) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "title" ? "asc" : "desc");
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ col }: { col: typeof sortKey }) => {
+    if (sortKey !== col) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
+  const filteredAssignments = assignments
+    .filter((a) => {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        a.title.toLowerCase().includes(q) ||
+        (a.module_name || "").toLowerCase().includes(q) ||
+        a.status.toLowerCase().includes(q) ||
+        a.assignment_type.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortKey === "title") return dir * a.title.localeCompare(b.title);
+      if (sortKey === "status") return dir * a.status.localeCompare(b.status);
+      return dir * (new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    });
 
   // Show upsell after successful checkout
   useEffect(() => {
