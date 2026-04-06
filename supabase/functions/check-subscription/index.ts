@@ -87,12 +87,14 @@ serve(async (req) => {
     let planProductId: string | null = null;
     let subscriptionEnd: string | null = null;
     let hasManagerAddon = false;
+    let managerTier: string | null = null;
 
     for (const sub of subscriptions.data) {
       for (const item of sub.items.data) {
         const prodId = typeof item.price.product === "string" ? item.price.product : (item.price.product as any).id;
-        if (prodId === MANAGER_PRODUCT_ID) {
+        if (MANAGER_PRODUCT_IDS[prodId]) {
           hasManagerAddon = true;
+          managerTier = MANAGER_PRODUCT_IDS[prodId];
         } else if (TIER_CREDITS[prodId] !== undefined) {
           planProductId = prodId;
           subscriptionEnd = new Date(sub.current_period_end * 1000).toISOString();
