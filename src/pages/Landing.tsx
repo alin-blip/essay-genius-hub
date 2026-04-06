@@ -77,11 +77,7 @@ const steps = [
   { step: "03", title: "Get Your Assignment", description: "AI generates your work with proper structure, references, and human-like writing quality." },
 ];
 
-const plans = [
-  { name: "Starter", price: "£9.99", period: "/month", description: "For occasional assignments", features: ["5,000 words/month", "Essays & Reports", "Harvard Referencing", "DOCX Export"], highlighted: false },
-  { name: "Pro", price: "£19.99", period: "/month", description: "For regular coursework", features: ["15,000 words/month", "All Assignment Types", "Advanced Humanization", "Priority Generation", "PDF & DOCX Export"], highlighted: true },
-  { name: "Dissertation", price: "£49.99", period: "/month", description: "For final year projects", features: ["50,000 words/month", "Chapter-by-Chapter Builder", "Literature Review Support", "Methodology Guidance", "Unlimited Regenerations"], highlighted: false },
-];
+// Plans are now in src/lib/subscription-tiers.ts
 
 const faqs = [
   { q: "Will my assignment be detected as AI-generated?", a: "Our advanced humanization engine rewrites content with natural sentence variation, academic hedging phrases, and varied vocabulary. The output reads like genuine student writing." },
