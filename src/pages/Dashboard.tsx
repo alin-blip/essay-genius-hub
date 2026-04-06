@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   GraduationCap, Plus, FileText, CreditCard, Award, TrendingUp,
-  Settings, LogOut, Trash2, Sparkles, Crown,
+  Settings, LogOut, Trash2, Sparkles, Crown, AlertTriangle,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
