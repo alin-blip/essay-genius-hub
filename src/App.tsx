@@ -13,6 +13,7 @@ import Onboarding from "./pages/Onboarding.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import NewAssignment from "./pages/NewAssignment.tsx";
 import AssignmentEditor from "./pages/AssignmentEditor.tsx";
+import AdminDashboardPage from "./pages/AdminDashboard.tsx";
 import Settings from "./pages/Settings.tsx";
 import Unsubscribe from "./pages/Unsubscribe.tsx";
 import AffiliateApply from "./pages/AffiliateApply.tsx";
