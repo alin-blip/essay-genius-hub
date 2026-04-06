@@ -14,6 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_payouts: {
+        Row: {
+          affiliate_id: string
+          amount_pence: number
+          created_at: string
+          currency: string
+          id: string
+          referral_id: string | null
+          status: string
+          stripe_transfer_id: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          amount_pence: number
+          created_at?: string
+          currency?: string
+          id?: string
+          referral_id?: string | null
+          status?: string
+          stripe_transfer_id?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          amount_pence?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          referral_id?: string | null
+          status?: string
+          stripe_transfer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_payouts_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_payouts_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliates: {
+        Row: {
+          affiliate_code: string
+          commission_rate: number
+          created_at: string
+          id: string
+          reason: string | null
+          social_media: string | null
+          status: string
+          stripe_connect_account_id: string | null
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          affiliate_code: string
+          commission_rate?: number
+          created_at?: string
+          id?: string
+          reason?: string | null
+          social_media?: string | null
+          status?: string
+          stripe_connect_account_id?: string | null
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          affiliate_code?: string
+          commission_rate?: number
+          created_at?: string
+          id?: string
+          reason?: string | null
+          social_media?: string | null
+          status?: string
+          stripe_connect_account_id?: string | null
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
       assignments: {
         Row: {
           additional_instructions: string | null
@@ -202,6 +292,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      referrals: {
+        Row: {
+          affiliate_id: string
+          created_at: string
+          id: string
+          referred_user_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          affiliate_id: string
+          created_at?: string
+          id?: string
+          referred_user_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          affiliate_id?: string
+          created_at?: string
+          id?: string
+          referred_user_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
