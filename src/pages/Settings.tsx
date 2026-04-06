@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { GraduationCap, ArrowLeft, Save, KeyRound } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { GraduationCap, ArrowLeft, Save, KeyRound, Crown, ExternalLink, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { toast as sonnerToast } from "sonner";
 
 const LEVELS = [
   { value: "hnd_level5", label: "HND Level 5" },
