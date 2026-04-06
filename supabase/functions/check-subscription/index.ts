@@ -7,7 +7,11 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const MANAGER_PRODUCT_ID = "prod_UHinoHKxoNq82E";
+const MANAGER_PRODUCT_IDS: Record<string, string> = {
+  "prod_UHinoHKxoNq82E": "monthly",
+  "prod_UHitFVNwfJgmvv": "academic_year",
+  "prod_UHitoIAkNJKLoL": "final_year",
+};
 
 const TIER_CREDITS: Record<string, number> = {
   prod_UHinD1B3zVPt72: 6000,    // Student Basic
