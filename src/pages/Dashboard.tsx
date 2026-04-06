@@ -354,8 +354,20 @@ const Dashboard = () => {
         <UsageHistoryChart assignments={allAssignments as Tables<"assignments">[]} />
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-lg">Recent Assignments</CardTitle>
+          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
+            <CardTitle className="text-lg">Assignments</CardTitle>
+            {assignments.length > 0 && (
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search assignments..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            )}
           </CardHeader>
           <CardContent>
             {assignments.length > 0 ? (
@@ -363,62 +375,82 @@ const Dashboard = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Title</TableHead>
+                      <TableHead>
+                        <button onClick={() => handleSort("title")} className="flex items-center hover:text-foreground transition-colors">
+                          Title <SortIcon col="title" />
+                        </button>
+                      </TableHead>
                       <TableHead className="hidden md:table-cell">Module</TableHead>
                       <TableHead className="hidden md:table-cell">Type</TableHead>
                       <TableHead>Words</TableHead>
                       <TableHead>Grade</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="hidden md:table-cell">Date</TableHead>
+                      <TableHead>
+                        <button onClick={() => handleSort("status")} className="flex items-center hover:text-foreground transition-colors">
+                          Status <SortIcon col="status" />
+                        </button>
+                      </TableHead>
+                      <TableHead className="hidden md:table-cell">
+                        <button onClick={() => handleSort("created_at")} className="flex items-center hover:text-foreground transition-colors">
+                          Date <SortIcon col="created_at" />
+                        </button>
+                      </TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {assignments
-                      .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
-                      .map((a) => (
-                      <TableRow
-                        key={a.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => navigate(`/assignment/${a.id}`)}
-                      >
-                        <TableCell className="font-medium">{a.title}</TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">{a.module_name || "—"}</TableCell>
-                        <TableCell className="hidden md:table-cell capitalize">{a.assignment_type?.replace(/_/g, " ")}</TableCell>
-                        <TableCell>{a.word_count?.toLocaleString()}</TableCell>
-                        <TableCell>{GRADE_LABELS[a.target_grade] || a.target_grade}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className={STATUS_COLORS[a.status] || ""}>
-                            {a.status?.charAt(0).toUpperCase() + a.status?.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell text-muted-foreground">
-                          {new Date(a.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteTarget({ id: a.id, title: a.title });
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                    {filteredAssignments.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No assignments match "{searchQuery}"
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredAssignments
+                        .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                        .map((a) => (
+                        <TableRow
+                          key={a.id}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => navigate(`/assignment/${a.id}`)}
+                        >
+                          <TableCell className="font-medium">{a.title}</TableCell>
+                          <TableCell className="hidden md:table-cell text-muted-foreground">{a.module_name || "—"}</TableCell>
+                          <TableCell className="hidden md:table-cell capitalize">{a.assignment_type?.replace(/_/g, " ")}</TableCell>
+                          <TableCell>{a.word_count?.toLocaleString()}</TableCell>
+                          <TableCell>{GRADE_LABELS[a.target_grade] || a.target_grade}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={STATUS_COLORS[a.status] || ""}>
+                              {a.status?.charAt(0).toUpperCase() + a.status?.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-muted-foreground">
+                            {new Date(a.created_at).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget({ id: a.id, title: a.title });
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
                 {(() => {
-                  const totalPages = Math.ceil(assignments.length / ITEMS_PER_PAGE);
+                  const totalPages = Math.ceil(filteredAssignments.length / ITEMS_PER_PAGE);
                   if (totalPages <= 1) return null;
                   return (
                     <div className="mt-4 flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">
-                        Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, assignments.length)} of {assignments.length}
+                        Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredAssignments.length)} of {filteredAssignments.length}
                       </p>
                       <Pagination>
                         <PaginationContent>
