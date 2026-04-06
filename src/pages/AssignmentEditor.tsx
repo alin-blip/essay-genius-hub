@@ -40,7 +40,7 @@ const AssignmentEditor = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [assignment, setAssignment] = useState<any>(null);
+  const [assignment, setAssignment] = useState<Tables<'assignments'> | null>(null);
   const [loading, setLoading] = useState(true);
   const [humanizing, setHumanizing] = useState(false);
   const [humanizeProgress, setHumanizeProgress] = useState(0);
