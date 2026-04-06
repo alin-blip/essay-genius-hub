@@ -24,10 +24,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Link referral on first sign-in
+      if (session?.user && _event === "SIGNED_IN") {
+        const affId = localStorage.getItem("ref_affiliate_id");
+        if (affId) {
+          await supabase.from("referrals").upsert(
+            { affiliate_id: affId, referred_user_id: session.user.id, status: "signed_up" },
+            { onConflict: "referred_user_id" }
+          );
+          localStorage.removeItem("ref_affiliate_id");
+          localStorage.removeItem("ref_code");
+          localStorage.removeItem("ref_ts");
+        }
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
