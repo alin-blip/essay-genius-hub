@@ -256,10 +256,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          account_type: string
           course_name: string | null
           created_at: string
           credits_balance: number
           full_name: string | null
+          has_manager_addon: boolean
           id: string
           subscription_plan: string
           university: string | null
@@ -268,10 +270,12 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_type?: string
           course_name?: string | null
           created_at?: string
           credits_balance?: number
           full_name?: string | null
+          has_manager_addon?: boolean
           id?: string
           subscription_plan?: string
           university?: string | null
@@ -280,10 +284,12 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_type?: string
           course_name?: string | null
           created_at?: string
           credits_balance?: number
           full_name?: string | null
+          has_manager_addon?: boolean
           id?: string
           subscription_plan?: string
           university?: string | null

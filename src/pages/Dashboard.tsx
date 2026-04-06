@@ -1,41 +1,27 @@
 import { useEffect, useState } from "react";
 import { Tables } from "@/integrations/supabase/types";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  GraduationCap,
-  Plus,
-  FileText,
-  CreditCard,
-  Award,
-  TrendingUp,
-  Settings,
-  LogOut,
-  Trash2,
+  GraduationCap, Plus, FileText, CreditCard, Award, TrendingUp,
+  Settings, LogOut, Trash2, Sparkles, Crown,
 } from "lucide-react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { MANAGER_ADDON } from "@/lib/subscription-tiers";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
@@ -57,27 +43,37 @@ const GRADE_LABELS: Record<string, string> = {
 };
 
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, subscription, refreshSubscription } = useAuth();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<Tables<'profiles'> | null>(null);
-  const [assignments, setAssignments] = useState<Tables<'assignments'>[]>([]);
+  const [searchParams] = useSearchParams();
+  const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
+  const [assignments, setAssignments] = useState<Tables<"assignments">[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [showUpsell, setShowUpsell] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  // Show upsell after successful checkout
+  useEffect(() => {
+    if (searchParams.get("checkout") === "success") {
+      refreshSubscription();
+      setTimeout(() => {
+        if (!subscription.hasManagerAddon) setShowUpsell(true);
+      }, 2000);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (!user) return;
-
     const fetchData = async () => {
       const [profileRes, assignmentsRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", user.id).single(),
         supabase.from("assignments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
       ]);
-
       if (profileRes.data) setProfile(profileRes.data);
       if (assignmentsRes.data) setAssignments(assignmentsRes.data);
       setLoading(false);
     };
-
     fetchData();
   }, [user]);
 
@@ -91,6 +87,31 @@ const Dashboard = () => {
       toast.success("Assignment deleted");
     }
     setDeleteTarget(null);
+  };
+
+  const handleCheckout = async (priceId: string) => {
+    setCheckoutLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { price_id: priceId },
+      });
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to start checkout");
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
+  const handleCustomerPortal = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("customer-portal");
+      if (error) throw error;
+      if (data?.url) window.open(data.url, "_blank");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to open billing portal");
+    }
   };
 
   const handleLogout = async () => {
@@ -111,6 +132,9 @@ const Dashboard = () => {
       </div>
     );
   }
+
+  const planName = subscription.planTier?.name || "Free";
+  const isSubscribed = subscription.subscribed;
 
   return (
     <div className="min-h-screen bg-secondary/20">
@@ -138,7 +162,7 @@ const Dashboard = () => {
               Welcome back{profile?.full_name ? `, ${profile.full_name}` : ""}! 👋
             </h1>
             <p className="text-muted-foreground">
-              {LEVEL_LABELS[profile?.university_level] || "Student"} · {profile?.course_name || "No course set"}
+              {LEVEL_LABELS[profile?.university_level ?? ""] || "Student"} · {profile?.course_name || "No course set"}
             </p>
           </div>
           <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90">
@@ -149,12 +173,37 @@ const Dashboard = () => {
           </Button>
         </div>
 
+        {/* Subscription Banner */}
+        {!isSubscribed && (
+          <Card className="border-accent/30 bg-accent/5">
+            <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Crown className="h-5 w-5 text-accent" />
+                <div>
+                  <p className="font-medium text-foreground">You're on the Free plan</p>
+                  <p className="text-sm text-muted-foreground">Upgrade to unlock more assignments and features.</p>
+                </div>
+              </div>
+              <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link to="/#pricing">View Plans</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { icon: CreditCard, label: "Credits Remaining", value: (profile?.credits_balance ?? 0).toLocaleString(), sub: "words" },
             { icon: FileText, label: "Assignments This Month", value: String(thisMonthCount), sub: "completed" },
             { icon: Award, label: "Total Assignments", value: String(assignments.length), sub: "all time" },
-            { icon: TrendingUp, label: "Subscription", value: (profile?.subscription_plan || "free").charAt(0).toUpperCase() + (profile?.subscription_plan || "free").slice(1), sub: profile?.subscription_plan === "free" ? "5,000 words/mo" : "Active" },
+            {
+              icon: TrendingUp,
+              label: "Plan",
+              value: planName,
+              sub: isSubscribed
+                ? subscription.hasManagerAddon ? "Manager Active ✨" : "Active"
+                : "Free tier",
+            },
           ].map((stat, i) => (
             <Card key={i}>
               <CardContent className="p-4 flex items-start gap-3">
@@ -170,6 +219,26 @@ const Dashboard = () => {
             </Card>
           ))}
         </div>
+
+        {/* Subscription management */}
+        {isSubscribed && (
+          <div className="flex gap-3">
+            <Button variant="outline" size="sm" onClick={handleCustomerPortal}>
+              Manage Subscription
+            </Button>
+            {!subscription.hasManagerAddon && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowUpsell(true)}
+                className="border-accent/30 text-accent hover:bg-accent/10"
+              >
+                <Sparkles className="h-4 w-4 mr-1" />
+                Add Assignment Manager
+              </Button>
+            )}
+          </div>
+        )}
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -244,6 +313,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Delete dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -260,6 +330,35 @@ const Dashboard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Manager Upsell Dialog */}
+      <Dialog open={showUpsell} onOpenChange={setShowUpsell}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-accent" />
+              Assignment Manager
+            </DialogTitle>
+            <DialogDescription>{MANAGER_ADDON.description}</DialogDescription>
+          </DialogHeader>
+          <div className="py-4 text-center">
+            <p className="text-3xl font-bold text-primary">£{MANAGER_ADDON.priceGBP}<span className="text-base font-normal text-muted-foreground">/month</span></p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowUpsell(false)}>Maybe Later</Button>
+            <Button
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+              disabled={checkoutLoading}
+              onClick={() => {
+                setShowUpsell(false);
+                handleCheckout(MANAGER_ADDON.priceId);
+              }}
+            >
+              Add Assignment Manager
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
