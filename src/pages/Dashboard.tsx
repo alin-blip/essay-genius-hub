@@ -322,56 +322,109 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent>
             {assignments.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead className="hidden md:table-cell">Module</TableHead>
-                    <TableHead className="hidden md:table-cell">Type</TableHead>
-                    <TableHead>Words</TableHead>
-                    <TableHead>Grade</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">Date</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {assignments.map((a) => (
-                    <TableRow
-                      key={a.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => navigate(`/assignment/${a.id}`)}
-                    >
-                      <TableCell className="font-medium">{a.title}</TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">{a.module_name || "—"}</TableCell>
-                      <TableCell className="hidden md:table-cell capitalize">{a.assignment_type?.replace(/_/g, " ")}</TableCell>
-                      <TableCell>{a.word_count?.toLocaleString()}</TableCell>
-                      <TableCell>{GRADE_LABELS[a.target_grade] || a.target_grade}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className={STATUS_COLORS[a.status] || ""}>
-                          {a.status?.charAt(0).toUpperCase() + a.status?.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {new Date(a.created_at).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteTarget({ id: a.id, title: a.title });
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead className="hidden md:table-cell">Module</TableHead>
+                      <TableHead className="hidden md:table-cell">Type</TableHead>
+                      <TableHead>Words</TableHead>
+                      <TableHead>Grade</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="hidden md:table-cell">Date</TableHead>
+                      <TableHead className="w-10"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {assignments
+                      .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                      .map((a) => (
+                      <TableRow
+                        key={a.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/assignment/${a.id}`)}
+                      >
+                        <TableCell className="font-medium">{a.title}</TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">{a.module_name || "—"}</TableCell>
+                        <TableCell className="hidden md:table-cell capitalize">{a.assignment_type?.replace(/_/g, " ")}</TableCell>
+                        <TableCell>{a.word_count?.toLocaleString()}</TableCell>
+                        <TableCell>{GRADE_LABELS[a.target_grade] || a.target_grade}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={STATUS_COLORS[a.status] || ""}>
+                            {a.status?.charAt(0).toUpperCase() + a.status?.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-muted-foreground">
+                          {new Date(a.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget({ id: a.id, title: a.title });
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {(() => {
+                  const totalPages = Math.ceil(assignments.length / ITEMS_PER_PAGE);
+                  if (totalPages <= 1) return null;
+                  return (
+                    <div className="mt-4 flex items-center justify-between">
+                      <p className="text-sm text-muted-foreground">
+                        Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, assignments.length)} of {assignments.length}
+                      </p>
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          {Array.from({ length: totalPages }, (_, i) => i + 1)
+                            .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                            .reduce<(number | "ellipsis")[]>((acc, p, idx, arr) => {
+                              if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("ellipsis");
+                              acc.push(p);
+                              return acc;
+                            }, [])
+                            .map((item, idx) =>
+                              item === "ellipsis" ? (
+                                <PaginationItem key={`e-${idx}`}><PaginationEllipsis /></PaginationItem>
+                              ) : (
+                                <PaginationItem key={item}>
+                                  <PaginationLink
+                                    isActive={currentPage === item}
+                                    onClick={() => setCurrentPage(item as number)}
+                                    className="cursor-pointer"
+                                  >
+                                    {item}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              )
+                            )}
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  );
+                })()}
+              </>
             ) : (
               <div className="text-center py-12 space-y-4">
                 <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto" />
