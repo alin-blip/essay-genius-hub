@@ -1,101 +1,41 @@
 
 
-# Audit Complet — AssignmentPro
+# Plan: Transactional Emails for AssignmentPro
 
-## 🔴 Probleme Critice
+## Emails Identified
 
-### 1. Escaladare de privilegii: Utilizatorii își pot modifica credits și subscription
-**Severitate: CRITICĂ**
+Based on the app's user flows, these are the transactional emails needed:
 
-Politica RLS de UPDATE pe `profiles` permite utilizatorilor să-și modifice `credits_balance` și `subscription_plan` direct din client. Un utilizator poate rula în consolă:
-```
-supabase.from('profiles').update({ credits_balance: 999999 }).eq('user_id', uid)
-```
+1. **Welcome Email** — sent after a user completes onboarding (profile setup), welcoming them to AssignmentPro
+2. **Assignment Ready Email** — sent after an assignment is successfully generated, notifying the user their essay is ready to view/download
+3. **Low Credits Warning** — sent when a user's credits drop below a threshold (e.g., 500 words remaining) after generating an assignment
 
-**Fix:** Restricționează UPDATE-ul la coloanele sigure (`full_name`, `university`, `university_level`, `course_name`) prin:
-- Înlocuirea politicii UPDATE cu una care folosește un trigger de validare SAU
-- Crearea unei funcții `security definer` pentru actualizarea creditelor (deja folosită în edge functions cu service role, dar politica RLS nu blochează client-side)
+## Technical Steps
 
-### 2. Leaked Password Protection dezactivat
-**Severitate: MEDIE**
+### Step 1: Scaffold transactional email infrastructure
+- Call the transactional email scaffolding tool to create the Edge Functions (`send-transactional-email`, `handle-email-unsubscribe`, `handle-email-suppression`) and the template registry
 
-Parolele compromise (din breaches publice) nu sunt verificate la signup. Trebuie activat HIBP check.
+### Step 2: Create 3 email templates
+Create React Email templates in `supabase/functions/_shared/transactional-email-templates/`:
 
----
+- **`welcome.tsx`** — "Welcome to AssignmentPro" with user's name, brief intro, CTA to dashboard
+- **`assignment-ready.tsx`** — "Your Assignment is Ready" with assignment title, word count, grade target, CTA to view it
+- **`low-credits.tsx`** — "You're Running Low on Credits" with remaining balance, CTA to upgrade
 
-## 🟡 Probleme Medii
+All templates will use AssignmentPro branding: dark blue `#1a365d` primary, gold `#d4a843` accent, white `#ffffff` background, Inter font family.
 
-### 3. Tipuri `any` peste tot
-Dashboard, AssignmentEditor, Settings folosesc `useState<any>` pentru profile și assignments. Tipurile există deja în `types.ts` — ar trebui folosite.
+### Step 3: Register templates in registry.ts
+Add all 3 templates to the `TEMPLATES` map in `registry.ts`.
 
-### 4. Nu există forgot password
-Nu există pagină de reset parolă. Doar change password din Settings (necesită autentificare).
+### Step 4: Wire up triggers in the app
 
-### 5. Signup nu redirecționează la onboarding
-După email verification, `emailRedirectTo` trimite la `window.location.origin` (landing page `/`). Ar trebui să fie `/dashboard` ca ProtectedRoute să redirecționeze la `/onboarding`.
+- **Welcome**: In `Onboarding.tsx`, after successful profile save, invoke `send-transactional-email` with `welcome` template
+- **Assignment Ready**: In `NewAssignment.tsx`, after successful generation, invoke `send-transactional-email` with `assignment-ready` template and pass title/word count/grade as templateData
+- **Low Credits**: In `NewAssignment.tsx`, after generation, check if `credits_remaining < 500` and send the low-credits email
 
-### 6. Lipsă validare input pe edge functions
-Edge functions nu validează formatul/lungimea input-urilor (ex: `word_count` ar putea fi 0 sau 1000000). Nu se folosește Zod sau echivalent.
+### Step 5: Create unsubscribe page
+Create a branded `/unsubscribe` page that validates tokens and lets users opt out of app emails.
 
----
-
-## 🟢 Probleme Minore
-
-### 7. Dashboard `toast.error` / `toast.success` inconsistent
-Dashboard folosește `toast.error()` / `toast.success()` dar `useToast` returnează `toast({ variant: "destructive" })`. Probabil funcționează prin Sonner, dar e inconsistent.
-
-### 8. Lipsă error handling la fetch-uri
-Dashboard și alte pagini nu tratează erorile de la queries Supabase (ex: `profileRes.error` nu e verificat).
-
-### 9. Nu există rate limiting pe edge functions
-Un utilizator autentificat poate spama generări/humanizări fără limite.
-
----
-
-## Plan de Implementare (prioritizat)
-
-### Pasul 1: Fix escaladare privilegii (CRITIC)
-- Creează o migrare SQL care:
-  - Șterge politica UPDATE existentă pe `profiles`
-  - Adaugă o politică UPDATE restricționată doar la coloanele `full_name`, `university`, `university_level`, `course_name`
-  - Alternativ: adaugă un trigger BEFORE UPDATE care previne modificarea `credits_balance` și `subscription_plan` din context non-service-role
-
-### Pasul 2: Activează Leaked Password Protection
-- Folosește `cloud--configure_auth` pentru a activa HIBP check
-
-### Pasul 3: Fix redirect după email verification
-- Schimbă `emailRedirectTo` în Signup.tsx la `${window.location.origin}/dashboard`
-
-### Pasul 4: Adaugă validare Zod pe edge functions
-- Validează `word_count` (100-10000), `assignment_type`, `target_grade`, etc.
-
-### Pasul 5: Înlocuiește `any` cu tipuri corecte
-- Folosește `Tables<'profiles'>` și `Tables<'assignments'>` din types.ts
-
-### Pasul 6: Adaugă forgot password flow
-- Pagină nouă `/forgot-password` cu `supabase.auth.resetPasswordForEmail()`
-
-### Detalii Tehnice
-
-**Pentru fix-ul de privilegii (Pasul 1)**, cea mai solidă abordare este un trigger BEFORE UPDATE:
-
-```sql
-CREATE OR REPLACE FUNCTION prevent_credit_tampering()
-RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-  IF current_setting('role') != 'service_role' THEN
-    NEW.credits_balance := OLD.credits_balance;
-    NEW.subscription_plan := OLD.subscription_plan;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-
-CREATE TRIGGER guard_credits
-  BEFORE UPDATE ON profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION prevent_credit_tampering();
-```
-
-Aceasta permite edge functions (care folosesc service_role) să actualizeze creditele, dar blochează orice tentativă din client.
+### Step 6: Deploy all edge functions
+Deploy `send-transactional-email`, `handle-email-unsubscribe`, `handle-email-suppression`.
 
