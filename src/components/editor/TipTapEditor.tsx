@@ -1,0 +1,257 @@
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Placeholder from "@tiptap/extension-placeholder";
+import Highlight from "@tiptap/extension-highlight";
+import Typography from "@tiptap/extension-typography";
+import { useEffect, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Bold,
+  Italic,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  Undo,
+  Redo,
+  RefreshCw,
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+interface TipTapEditorProps {
+  content: string;
+  onUpdate: (content: string) => void;
+  onRegenerateSelection?: (selectedText: string) => void;
+  regenerating?: boolean;
+  editable?: boolean;
+}
+
+function markdownToHtml(md: string): string {
+  return md
+    .split("\n")
+    .map((line) => {
+      if (line.startsWith("### "))
+        return `<h3>${line.slice(4)}</h3>`;
+      if (line.startsWith("## "))
+        return `<h2>${line.slice(3)}</h2>`;
+      if (line.startsWith("# "))
+        return `<h1>${line.slice(2)}</h1>`;
+      if (line.startsWith("- ") || line.startsWith("* "))
+        return `<li>${line.slice(2)}</li>`;
+      if (/^\d+\.\s/.test(line))
+        return `<li>${line.replace(/^\d+\.\s/, "")}</li>`;
+      if (line.trim() === "") return "<p></p>";
+      // Handle bold
+      let processed = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      processed = processed.replace(/\*(.*?)\*/g, "<em>$1</em>");
+      return `<p>${processed}</p>`;
+    })
+    .join("");
+}
+
+function htmlToMarkdown(html: string): string {
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  let md = "";
+
+  function processNode(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE) return node.textContent || "";
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    const el = node as HTMLElement;
+    const tag = el.tagName.toLowerCase();
+    const children = Array.from(el.childNodes).map(processNode).join("");
+
+    switch (tag) {
+      case "h1": return `# ${children}\n\n`;
+      case "h2": return `## ${children}\n\n`;
+      case "h3": return `### ${children}\n\n`;
+      case "p": return children ? `${children}\n\n` : "\n";
+      case "strong": case "b": return `**${children}**`;
+      case "em": case "i": return `*${children}*`;
+      case "ul": case "ol": return `${children}\n`;
+      case "li": return `- ${children}\n`;
+      case "br": return "\n";
+      default: return children;
+    }
+  }
+
+  Array.from(div.childNodes).forEach((node) => {
+    md += processNode(node);
+  });
+  return md.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+const TipTapEditor = ({
+  content,
+  onUpdate,
+  onRegenerateSelection,
+  regenerating,
+  editable = true,
+}: TipTapEditorProps) => {
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder: "Start writing..." }),
+      Highlight,
+      Typography,
+    ],
+    content: markdownToHtml(content),
+    editable,
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      onUpdate(htmlToMarkdown(html));
+    },
+  });
+
+  useEffect(() => {
+    if (editor && content) {
+      const currentMd = htmlToMarkdown(editor.getHTML());
+      if (currentMd !== content) {
+        editor.commands.setContent(markdownToHtml(content));
+      }
+    }
+  }, [content, editor]);
+
+  const handleRegenerate = useCallback(() => {
+    if (!editor || !onRegenerateSelection) return;
+    const { from, to } = editor.state.selection;
+    if (from === to) return;
+    const selectedText = editor.state.doc.textBetween(from, to, "\n");
+    if (selectedText.trim()) {
+      onRegenerateSelection(selectedText);
+    }
+  }, [editor, onRegenerateSelection]);
+
+  if (!editor) return null;
+
+  const hasSelection = editor.state.selection.from !== editor.state.selection.to;
+
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      {editable && (
+        <div className="border-b bg-muted/30 p-2 flex items-center gap-1 flex-wrap">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8"
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                data-active={editor.isActive("bold")}
+              >
+                <Bold className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Bold</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8"
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                data-active={editor.isActive("italic")}
+              >
+                <Italic className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Italic</TooltipContent>
+          </Tooltip>
+          <div className="w-px h-6 bg-border mx-1" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8"
+                onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                data-active={editor.isActive("heading", { level: 2 })}
+              >
+                <Heading2 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Heading 2</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8"
+                onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                data-active={editor.isActive("heading", { level: 3 })}
+              >
+                <Heading3 className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Heading 3</TooltipContent>
+          </Tooltip>
+          <div className="w-px h-6 bg-border mx-1" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8"
+                onClick={() => editor.chain().focus().toggleBulletList().run()}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Bullet List</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost" size="icon" className="h-8 w-8"
+                onClick={() => editor.chain().focus().toggleOrderedList().run()}
+              >
+                <ListOrdered className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Numbered List</TooltipContent>
+          </Tooltip>
+          <div className="w-px h-6 bg-border mx-1" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editor.chain().focus().undo().run()}>
+                <Undo className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Undo</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editor.chain().focus().redo().run()}>
+                <Redo className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Redo</TooltipContent>
+          </Tooltip>
+
+          {onRegenerateSelection && (
+            <>
+              <div className="flex-1" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRegenerate}
+                    disabled={!hasSelection || regenerating}
+                    className="text-xs gap-1"
+                  >
+                    <RefreshCw className={`h-3 w-3 ${regenerating ? "animate-spin" : ""}`} />
+                    {regenerating ? "Regenerating..." : "Regenerate Selection"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Select text, then click to regenerate that section with AI</TooltipContent>
+              </Tooltip>
+            </>
+          )}
+        </div>
+      )}
+      <EditorContent
+        editor={editor}
+        className="prose prose-sm max-w-none p-6 md:p-8 min-h-[400px] focus:outline-none [&_.tiptap]:outline-none [&_.tiptap]:min-h-[400px]"
+      />
+    </div>
+  );
+};
+
+export default TipTapEditor;

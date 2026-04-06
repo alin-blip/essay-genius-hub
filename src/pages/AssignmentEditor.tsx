@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Tables } from "@/integrations/supabase/types";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   FileDown,
   LetterText,
   FileType,
+  Save,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,6 +29,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { exportToDocx } from "@/lib/export-docx";
 import { exportToPdf } from "@/lib/export-pdf";
+import TipTapEditor from "@/components/editor/TipTapEditor";
+import AiDetectionScore from "@/components/editor/AiDetectionScore";
+import ReferenceValidator from "@/components/editor/ReferenceValidator";
 
 const GRADE_LABELS: Record<string, string> = {
   pass: "Pass",
@@ -41,12 +45,16 @@ const AssignmentEditor = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [assignment, setAssignment] = useState<Tables<'assignments'> | null>(null);
+  const [assignment, setAssignment] = useState<Tables<"assignments"> | null>(null);
   const [loading, setLoading] = useState(true);
   const [humanizing, setHumanizing] = useState(false);
   const [humanizeProgress, setHumanizeProgress] = useState(0);
   const [copied, setCopied] = useState(false);
   const [showHumanized, setShowHumanized] = useState(false);
+  const [editedContent, setEditedContent] = useState<string | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -67,13 +75,66 @@ const AssignmentEditor = () => {
       });
   }, [user, id, navigate]);
 
-  const activeContent = showHumanized && assignment?.humanized_content
-    ? assignment.humanized_content
-    : assignment?.generated_content;
+  const activeContent =
+    editedContent ??
+    (showHumanized && assignment?.humanized_content
+      ? assignment.humanized_content
+      : assignment?.generated_content);
 
   const wordCount = activeContent
     ? activeContent.replace(/[#*_\-\n]/g, " ").split(/\s+/).filter(Boolean).length
     : 0;
+
+  const handleContentUpdate = useCallback(
+    (newContent: string) => {
+      setEditedContent(newContent);
+      setHasChanges(true);
+    },
+    []
+  );
+
+  const handleSave = async () => {
+    if (!editedContent || !id) return;
+    setSaving(true);
+    const field = showHumanized && assignment?.humanized_content ? "humanized_content" : "generated_content";
+    const { error } = await supabase
+      .from("assignments")
+      .update({ [field]: editedContent })
+      .eq("id", id);
+
+    if (error) {
+      toast({ title: "Save failed", variant: "destructive" });
+    } else {
+      setAssignment((prev) => (prev ? { ...prev, [field]: editedContent } : prev));
+      setHasChanges(false);
+      toast({ title: "Saved!" });
+    }
+    setSaving(false);
+  };
+
+  const handleRegenerateSelection = async (selectedText: string) => {
+    if (!id) return;
+    setRegenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("regenerate-section", {
+        body: { assignment_id: id, selected_text: selectedText, full_content: activeContent },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Replace selected text with regenerated text
+      if (activeContent && data.regenerated_text) {
+        const newContent = activeContent.replace(selectedText, data.regenerated_text);
+        setEditedContent(newContent);
+        setHasChanges(true);
+        toast({ title: "Section regenerated! ✨" });
+      }
+    } catch (err: any) {
+      toast({ title: "Regeneration failed", description: err.message, variant: "destructive" });
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const handleCopy = async () => {
     if (!activeContent) return;
@@ -87,25 +148,22 @@ const AssignmentEditor = () => {
     if (!assignment?.generated_content || !id) return;
     setHumanizing(true);
     setHumanizeProgress(0);
-
     const interval = setInterval(() => {
       setHumanizeProgress((p) => Math.min(p + Math.random() * 10 + 3, 90));
     }, 1500);
-
     try {
       const { data, error } = await supabase.functions.invoke("humanize-text", {
         body: { assignment_id: id, content: assignment.generated_content },
       });
-
       clearInterval(interval);
-
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
       setHumanizeProgress(100);
       setTimeout(() => {
-        setAssignment((prev) => prev ? { ...prev, humanized_content: data.humanized_content } : prev);
+        setAssignment((prev) => (prev ? { ...prev, humanized_content: data.humanized_content } : prev));
         setShowHumanized(true);
+        setEditedContent(null);
+        setHasChanges(false);
         setHumanizing(false);
         toast({
           title: "Text Humanized! ✨",
@@ -115,11 +173,7 @@ const AssignmentEditor = () => {
     } catch (err: any) {
       clearInterval(interval);
       setHumanizing(false);
-      toast({
-        title: "Humanization Failed",
-        description: err.message || "Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Humanization Failed", description: err.message, variant: "destructive" });
     }
   };
 
@@ -135,20 +189,13 @@ const AssignmentEditor = () => {
     toast({ title: "Downloaded as TXT" });
   };
 
-  const renderContent = (content: string) => {
-    return content.split("\n").map((line: string, i: number) => {
-      if (line.startsWith("## "))
-        return <h2 key={i} className="text-lg font-bold text-foreground mt-6 mb-2">{line.replace("## ", "")}</h2>;
-      if (line.startsWith("### "))
-        return <h3 key={i} className="text-base font-semibold text-foreground mt-4 mb-1">{line.replace("### ", "")}</h3>;
-      if (line.startsWith("**") && line.endsWith("**"))
-        return <p key={i} className="font-semibold text-foreground mt-3 mb-1">{line.replace(/\*\*/g, "")}</p>;
-      if (line.trim() === "") return <br key={i} />;
-      return <p key={i} className="text-foreground leading-relaxed mb-2">{line}</p>;
-    });
+  const handleVersionSwitch = (humanized: boolean) => {
+    setShowHumanized(humanized);
+    setEditedContent(null);
+    setHasChanges(false);
   };
 
-  if (loading) {
+  if (loading || !assignment) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
@@ -165,7 +212,9 @@ const AssignmentEditor = () => {
             <span className="text-lg font-bold text-primary">AssignmentPro</span>
           </div>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-1" /> Dashboard</Link>
+            <Link to="/dashboard">
+              <ArrowLeft className="h-4 w-4 mr-1" /> Dashboard
+            </Link>
           </Button>
         </div>
       </nav>
@@ -202,7 +251,7 @@ const AssignmentEditor = () => {
                 <Button
                   variant={!showHumanized ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setShowHumanized(false)}
+                  onClick={() => handleVersionSwitch(false)}
                   className="text-xs h-7"
                 >
                   Original
@@ -210,7 +259,7 @@ const AssignmentEditor = () => {
                 <Button
                   variant={showHumanized ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setShowHumanized(true)}
+                  onClick={() => handleVersionSwitch(true)}
                   className="text-xs h-7"
                 >
                   Humanized
@@ -228,7 +277,16 @@ const AssignmentEditor = () => {
               </Button>
             )}
 
+            <AiDetectionScore content={activeContent || ""} assignmentId={id!} />
+
             <div className="flex-1" />
+
+            {hasChanges && (
+              <Button size="sm" onClick={handleSave} disabled={saving} className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <Save className="h-4 w-4 mr-1" />
+                {saving ? "Saving..." : "Save Changes"}
+              </Button>
+            )}
 
             <Button variant="outline" size="sm" onClick={handleCopy}>
               {copied ? <Check className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
@@ -238,40 +296,40 @@ const AssignmentEditor = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
-                  <Download className="h-4 w-4 mr-1" />
-                  Export
+                  <Download className="h-4 w-4 mr-1" /> Export
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleExportTxt}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Export as TXT
+                  <FileText className="h-4 w-4 mr-2" /> Export as TXT
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  if (!activeContent || !assignment) return;
-                  exportToDocx({
-                    title: assignment.title,
-                    moduleName: assignment.module_name,
-                    content: activeContent,
-                    references: assignment.references_list,
-                  });
-                  toast({ title: "Downloaded as DOCX" });
-                }}>
-                  <FileType className="h-4 w-4 mr-2" />
-                  Export as DOCX
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (!activeContent) return;
+                    exportToDocx({
+                      title: assignment.title,
+                      moduleName: assignment.module_name,
+                      content: activeContent,
+                      references: assignment.references_list,
+                    });
+                    toast({ title: "Downloaded as DOCX" });
+                  }}
+                >
+                  <FileType className="h-4 w-4 mr-2" /> Export as DOCX
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  if (!activeContent || !assignment) return;
-                  exportToPdf({
-                    title: assignment.title,
-                    moduleName: assignment.module_name,
-                    content: activeContent,
-                    references: assignment.references_list,
-                  });
-                  toast({ title: "Downloaded as PDF" });
-                }}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Export as PDF
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (!activeContent) return;
+                    exportToPdf({
+                      title: assignment.title,
+                      moduleName: assignment.module_name,
+                      content: activeContent,
+                      references: assignment.references_list,
+                    });
+                    toast({ title: "Downloaded as PDF" });
+                  }}
+                >
+                  <FileDown className="h-4 w-4 mr-2" /> Export as PDF
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -294,22 +352,20 @@ const AssignmentEditor = () => {
           </Card>
         )}
 
-        {/* Content */}
+        {/* Editor */}
         <Card>
-          <CardContent className="p-6 md:p-8">
-            <div className="flex items-center gap-2 mb-4 text-muted-foreground">
-              <FileText className="h-4 w-4" />
-              <span className="text-sm font-medium">
-                {showHumanized && assignment.humanized_content ? "Humanized Content" : "Generated Content"}
-              </span>
-            </div>
-            <div className="prose prose-sm max-w-none">
-              {activeContent ? renderContent(activeContent) : (
-                <p className="text-muted-foreground">No content available.</p>
-              )}
-            </div>
+          <CardContent className="p-0">
+            <TipTapEditor
+              content={activeContent || ""}
+              onUpdate={handleContentUpdate}
+              onRegenerateSelection={handleRegenerateSelection}
+              regenerating={regenerating}
+            />
           </CardContent>
         </Card>
+
+        {/* Reference Validator */}
+        <ReferenceValidator references={assignment.references_list} assignmentId={id!} />
       </div>
     </div>
   );
