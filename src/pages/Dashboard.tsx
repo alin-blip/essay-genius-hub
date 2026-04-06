@@ -21,7 +21,7 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { MANAGER_ADDON } from "@/lib/subscription-tiers";
+import { MANAGER_ADDONS } from "@/lib/subscription-tiers";
 
 const STATUS_COLORS: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
