@@ -1,57 +1,77 @@
 
 
-# Affiliate Program — 30% Recurring Commission via Stripe Connect
+# Pricing Structure: Students + Agents (2 Categories)
 
-## How It Works
+## Plan Overview
 
-1. Anyone can apply to become an affiliate through a public `/affiliate` page
-2. After approval, they connect their Stripe account (via Stripe Connect Express)
-3. They get a unique referral link like `assignmentpro.co.uk/?ref=CODE`
-4. When someone signs up through that link and subscribes, the affiliate earns **30% recurring commission** every month the referred user pays
-5. Commission is transferred automatically to the affiliate's bank account via Stripe
+Landing page with toggle/tabs switching between Student and Agent pricing.
 
-## Database (3 new tables)
+### Student Plans
 
-**`affiliates`** — stores affiliate applications and status
-- user_id, affiliate_code (unique), stripe_connect_account_id, status (pending/approved/rejected), commission_rate (default 0.30), application details (website, social_media, reason)
+| Plan | Price | Assignments | Words |
+|------|-------|-------------|-------|
+| Student Basic | £50/mo | 3/month | 6,000 |
+| Student Plus | £100/mo | 7/month | 14,000 |
+| Student Pro | £200/mo | 15/month | 30,000 |
 
-**`referrals`** — tracks which users were referred by which affiliate
-- affiliate_id → affiliates, referred_user_id, status (signed_up/subscribed/churned)
+### Agent Plans
 
-**`affiliate_payouts`** — logs every commission transfer
-- affiliate_id, stripe_transfer_id, amount (pence), currency, status
+| Plan | Price | Assignments | Words |
+|------|-------|-------------|-------|
+| Agent Starter | £200/mo | 10/month | 20,000 |
+| Agent Pro | £350/mo | 20/month | 40,000 |
+| Agent Unlimited | £997/mo | Unlimited | Unlimited |
 
-RLS: affiliates can only read their own data. Service role handles writes from edge functions.
+### Upsell (both categories)
+- **Assignment Manager** — £100/mo add-on (human concierge)
 
-## Stripe Connect Setup
+## Technical Steps
 
-- Use **Stripe Connect Express** accounts for affiliates
-- Edge function creates Connect account + onboarding link
-- On each subscription payment (`invoice.payment_succeeded` webhook), calculate 30% and create a `Transfer` to the affiliate's connected account
+### Step 1: Create 7 Stripe Products + Prices
+- 3 student products (£50, £100, £200/mo recurring GBP)
+- 3 agent products (£200, £350, £997/mo recurring GBP)
+- 1 Assignment Manager add-on (£100/mo recurring GBP)
 
-## New Pages
+### Step 2: Database Migration
+- Add `account_type` column to `profiles` (`student` | `agent`, default `student`)
+- Add `has_manager_addon` boolean to `profiles` (default false)
+- Update `prevent_credit_tampering` trigger to also protect `account_type` and `has_manager_addon`
 
-1. **`/affiliate`** — Public application form (name, website/social, why they want to join). Requires an AssignmentPro account.
-2. **`/affiliate/dashboard`** — Protected page showing: referral link, click stats, total referrals, earnings this month / lifetime, payout history, Stripe Connect onboarding button
+### Step 3: Edge Functions
+- **`create-checkout`** — Accepts a `price_id`, creates Stripe Checkout session for authenticated user. Supports both subscription plans and the manager add-on.
+- **`check-subscription`** — Queries Stripe for active subscriptions by user email. Returns: `subscribed`, `product_id`, `subscription_end`, `has_manager_addon`. Maps product IDs to tier names and credit amounts. Auto-sets credits on profile.
+- **`customer-portal`** — Opens Stripe billing portal for plan management.
 
-## New Edge Functions
+### Step 4: Frontend — Auth Context
+- After login/signup, call `check-subscription` to populate global state: `subscribed`, `planTier`, `planCategory` (student/agent), `hasManagerAddon`, `subscriptionEnd`
+- Auto-refresh every 60 seconds
+- Store tier config mapping (product_id → tier name, credits, category)
 
-1. **`affiliate-connect`** — Creates Stripe Connect Express account + returns onboarding URL
-2. **`affiliate-webhook`** — Stripe webhook for `invoice.payment_succeeded`: looks up referral → calculates 30% → creates Stripe Transfer → logs payout
+### Step 5: Landing Page Pricing Section
+- Add Student/Agent toggle tabs in `Landing.tsx` pricing section
+- 3 cards per category with features list
+- Checkout button on each card (redirects to login if not authenticated, then Stripe Checkout)
+- Assignment Manager upsell section below pricing cards
 
-## Referral Tracking
+### Step 6: Dashboard Updates
+- Show current plan and credits in stats cards
+- "Upgrade" button → Stripe Checkout
+- "Manage Subscription" → Customer Portal
+- Post-checkout upsell modal for Assignment Manager
+- "Manager Active" badge when subscribed to add-on
 
-- Signup page reads `?ref=CODE` from URL, stores in localStorage (30-day persistence)
-- After successful account creation, inserts row in `referrals` linking new user to affiliate
-- When the referred user subscribes, the webhook handles commission automatically
+### Step 7: Gate Features by Plan
+- Free users: limited to 1 assignment (trial)
+- Paid users: gated by assignment count per month (tracked via `assignments` table count for current billing period)
+- Agent Unlimited: no limits
 
-## Implementation Order
-
-1. Create 3 database tables with RLS policies
-2. Build `/affiliate` application page
-3. Build `/affiliate/dashboard` with stats
-4. Create `affiliate-connect` edge function (Stripe Connect Express onboarding)
-5. Create `affiliate-webhook` edge function (commission calculation + transfers)
-6. Wire referral tracking into Signup page (`?ref=` param → localStorage → referrals table)
-7. Deploy all edge functions
+## Files Changed
+- `src/pages/Landing.tsx` — pricing tabs with Student/Agent toggle
+- `src/pages/Dashboard.tsx` — subscription status, upgrade buttons, upsell modal
+- `src/hooks/useAuth.tsx` — subscription state from check-subscription
+- `supabase/functions/create-checkout/index.ts` — new
+- `supabase/functions/check-subscription/index.ts` — new
+- `supabase/functions/customer-portal/index.ts` — new
+- DB migration: add `account_type`, `has_manager_addon` to profiles
+- `src/lib/subscription-tiers.ts` — tier config constants (product IDs, names, limits)
 
