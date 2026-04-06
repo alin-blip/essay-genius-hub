@@ -81,7 +81,7 @@ const Dashboard = () => {
 
       const [profileRes, recentRes, allRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", user.id).single(),
-        supabase.from("assignments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(10),
+        supabase.from("assignments").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
         supabase.from("assignments").select("id, created_at").eq("user_id", user.id).gte("created_at", sixMonthsAgo.toISOString()).order("created_at", { ascending: false }),
       ]);
       if (profileRes.data) setProfile(profileRes.data);
