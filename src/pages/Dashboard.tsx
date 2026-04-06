@@ -50,10 +50,12 @@ const Dashboard = () => {
   const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<Tables<"profiles"> | null>(null);
   const [assignments, setAssignments] = useState<Tables<"assignments">[]>([]);
+  const [allAssignments, setAllAssignments] = useState<Tables<"assignments">[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
   const [showUpsell, setShowUpsell] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [limitEmailSent, setLimitEmailSent] = useState(false);
 
   // Show upsell after successful checkout
   useEffect(() => {
