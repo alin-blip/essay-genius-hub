@@ -1,12 +1,13 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getTierByProductId, type TierConfig } from "@/lib/subscription-tiers";
+import { getTierByProductId, type TierConfig, type ManagerAddonKey } from "@/lib/subscription-tiers";
 
 interface SubscriptionState {
   subscribed: boolean;
   planTier: TierConfig | null;
   hasManagerAddon: boolean;
+  managerTier: ManagerAddonKey | null;
   subscriptionEnd: string | null;
   loading: boolean;
 }
