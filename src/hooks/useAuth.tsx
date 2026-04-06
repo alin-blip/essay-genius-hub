@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [subscription, setSubscription] = useState<SubscriptionState>({
-    subscribed: false, planTier: null, hasManagerAddon: false, subscriptionEnd: null, loading: true,
+    subscribed: false, planTier: null, hasManagerAddon: false, managerTier: null, subscriptionEnd: null, loading: true,
   });
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
