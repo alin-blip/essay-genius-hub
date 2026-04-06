@@ -359,18 +359,54 @@ const Dashboard = () => {
         <UsageHistoryChart assignments={allAssignments as Tables<"assignments">[]} />
 
         <Card>
-          <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2">
-            <CardTitle className="text-lg">Assignments</CardTitle>
+          <CardHeader className="flex flex-col gap-3 pb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <CardTitle className="text-lg">Assignments</CardTitle>
+              {assignments.length > 0 && (
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search assignments..."
+                    value={searchQuery}
+                    onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              )}
+            </div>
             {assignments.length > 0 && (
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search assignments..."
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                  className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                />
+              <div className="flex flex-wrap gap-2">
+                <Select value={filterType} onValueChange={(v) => { setFilterType(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[140px] h-8 text-xs">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="essay">Essay</SelectItem>
+                    <SelectItem value="report">Report</SelectItem>
+                    <SelectItem value="case_study">Case Study</SelectItem>
+                    <SelectItem value="literature_review">Literature Review</SelectItem>
+                    <SelectItem value="research_paper">Research Paper</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterGrade} onValueChange={(v) => { setFilterGrade(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[140px] h-8 text-xs">
+                    <SelectValue placeholder="All Grades" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Grades</SelectItem>
+                    <SelectItem value="pass">Pass</SelectItem>
+                    <SelectItem value="merit">Merit</SelectItem>
+                    <SelectItem value="distinction_lower">2:1</SelectItem>
+                    <SelectItem value="distinction">First</SelectItem>
+                  </SelectContent>
+                </Select>
+                {(filterType !== "all" || filterGrade !== "all") && (
+                  <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => { setFilterType("all"); setFilterGrade("all"); setCurrentPage(1); }}>
+                    Clear filters
+                  </Button>
+                )}
               </div>
             )}
           </CardHeader>
