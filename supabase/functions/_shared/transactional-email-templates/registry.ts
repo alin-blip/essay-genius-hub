@@ -14,6 +14,7 @@ import { template as assignmentReady } from './assignment-ready.tsx'
 import { template as lowCredits } from './low-credits.tsx'
 import { template as usageLimitWarning } from './usage-limit-warning.tsx'
 import { template as referralUpgraded } from './referral-upgraded.tsx'
+import { template as referralSignup } from './referral-signup.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'welcome': welcome,
@@ -21,4 +22,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'low-credits': lowCredits,
   'usage-limit-warning': usageLimitWarning,
   'referral-upgraded': referralUpgraded,
+  'referral-signup': referralSignup,
 }
