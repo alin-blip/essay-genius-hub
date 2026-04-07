@@ -111,6 +111,7 @@ export type Database = {
           assignment_type: string
           created_at: string
           generated_content: string | null
+          generation_metadata: Json | null
           humanized_content: string | null
           id: string
           include_case_studies: boolean
@@ -131,6 +132,7 @@ export type Database = {
           assignment_type?: string
           created_at?: string
           generated_content?: string | null
+          generation_metadata?: Json | null
           humanized_content?: string | null
           id?: string
           include_case_studies?: boolean
@@ -151,6 +153,7 @@ export type Database = {
           assignment_type?: string
           created_at?: string
           generated_content?: string | null
+          generation_metadata?: Json | null
           humanized_content?: string | null
           id?: string
           include_case_studies?: boolean
