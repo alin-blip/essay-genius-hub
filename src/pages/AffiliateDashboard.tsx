@@ -328,6 +328,8 @@ const AffiliateDashboard = () => {
                 </CardContent>
               </Card>
             </div>
+          </>
+        )}
 
         {affiliate?.status === "approved" && referrals.length > 0 && (
           <Card className="mb-6">
