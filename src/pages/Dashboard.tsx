@@ -468,9 +468,30 @@ const Dashboard = () => {
                           <TableCell>{a.word_count?.toLocaleString()}</TableCell>
                           <TableCell>{GRADE_LABELS[a.target_grade] || a.target_grade}</TableCell>
                           <TableCell>
-                            <Badge variant="secondary" className={STATUS_COLORS[a.status] || ""}>
-                              {a.status?.charAt(0).toUpperCase() + a.status?.slice(1)}
-                            </Badge>
+                            <div className="flex flex-wrap items-center gap-1">
+                              <Badge variant="secondary" className={STATUS_COLORS[a.status] || ""}>
+                                {a.status?.charAt(0).toUpperCase() + a.status?.slice(1)}
+                              </Badge>
+                              {a.status === "completed" && (() => {
+                                const meta = a.generation_metadata as any;
+                                const aiScore = meta?.ai_detection?.human_score;
+                                const simScore = meta?.similarity?.overall_similarity;
+                                return (
+                                  <>
+                                    {aiScore != null && (
+                                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${aiScore >= 70 ? "border-green-500 text-green-700" : aiScore >= 40 ? "border-amber-500 text-amber-700" : "border-destructive text-destructive"}`}>
+                                        {aiScore}% human
+                                      </Badge>
+                                    )}
+                                    {simScore != null && (
+                                      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${simScore <= 10 ? "border-green-500 text-green-700" : simScore <= 25 ? "border-amber-500 text-amber-700" : "border-destructive text-destructive"}`}>
+                                        {simScore}% sim
+                                      </Badge>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
                           </TableCell>
                           <TableCell className="hidden md:table-cell text-muted-foreground">
                             {new Date(a.created_at).toLocaleDateString()}
