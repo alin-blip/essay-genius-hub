@@ -145,7 +145,7 @@ serve(async (req) => {
       .eq("user_id", user.id)
       .single();
 
-    const creditCost = Math.ceil(word_count / 100);
+    const creditCost = word_count;
     if (!profile || profile.credits_balance < creditCost) {
       return new Response(JSON.stringify({ error: "Insufficient credits" }), {
         status: 402,

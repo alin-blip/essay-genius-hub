@@ -97,9 +97,11 @@ const AssignmentEditor = () => {
     if (!editedContent || !id) return;
     setSaving(true);
     const field = showHumanized && assignment?.humanized_content ? "humanized_content" : "generated_content";
+    const updateData: Record<string, string> = {};
+    updateData[field] = editedContent;
     const { error } = await supabase
       .from("assignments")
-      .update({ [field]: editedContent })
+      .update(updateData as any)
       .eq("id", id);
 
     if (error) {
