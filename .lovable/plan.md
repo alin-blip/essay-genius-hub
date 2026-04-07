@@ -1,53 +1,32 @@
 
 
-## Plan: Improve AI Detection Score
+## Plan: Upgrade Affiliate System
 
-### Current State
+### Changes
 
-The system already has:
-- Anti-AI vocabulary in the generation prompt (banned words, contractions, varied sentence lengths)
-- Auto-humanize pass if AI detection > 60%
-- AI detection self-check using Gemini Flash
+#### 1. Change commission rate to 50%
+- **Database migration**: Update default `commission_rate` on `affiliates` table from `0.30` to `0.50`
+- **Update existing affiliates**: Set all current affiliates to `0.50`
+- **UI text**: Update "30% recurring commission" → "50% recurring commission" in `AffiliateApply.tsx`
 
-### Problem
+#### 2. Add name, email, phone to affiliate application form
+- **Database migration**: Add columns to `affiliates` table: `contact_name text`, `contact_email text`, `contact_phone text`
+- **AffiliateApply.tsx**: Add 3 new required fields (Full Name, Email, Phone Number) to the application form, before the optional website/social fields
 
-The AI detection score is unreliable because:
-1. **Self-assessment is weak** — using one AI model to judge another AI's output is circular. Real detectors (Turnitin, GPTZero) use statistical models, not LLMs.
-2. **Single humanize pass** — one rewrite may not be enough.
-3. **No re-check after humanize** — the system never verifies the humanized version scores better.
-4. **Temperature is default** — more randomness = harder to detect.
-
-### Proposed Improvements
-
-#### 1. Multi-pass humanization with re-check loop
-After auto-humanize, re-run the AI detection check on the humanized text. If still above 40%, humanize again (max 2 additional passes). This iterative approach progressively reduces detectable patterns.
-
-#### 2. Increase generation temperature
-Set `temperature: 1.1` on the main generation call (currently default ~1.0). Higher temperature introduces more lexical randomness — a key signal real detectors look for (perplexity).
-
-#### 3. Add "burstiness" instruction to the prompt
-Real human writing has high "burstiness" — alternating between complex and simple sentences. Add explicit instruction to the system prompt targeting this specific metric that detectors measure.
-
-#### 4. Inject deliberate imperfections
-Add instructions to occasionally:
-- Use slightly awkward phrasing that a student would leave in
-- Include a minor self-correction mid-paragraph
-- Have one paragraph that feels slightly off-topic before refocusing
-- Use filler phrases: "to be fair", "in a way", "if anything"
-
-#### 5. Lower auto-humanize threshold to 40%
-Currently triggers at 60%. Lowering to 40% ensures more assignments get humanized.
-
-#### 6. Post-humanize verification in generation report
-After the final pass, re-run AI detection on the final content and store the updated score in `generation_metadata` so the user sees the actual post-humanize score.
+#### 3. Show referred users in affiliate dashboard
+- Currently, the referrals table only stores `referred_user_id` and `status` — no user details are visible
+- **AffiliateDashboard.tsx**: Add a "Referred Users" table section showing all referrals with:
+  - Sign-up date (`referrals.created_at`)
+  - Status (signed_up / subscribed)
+  - To get user details (name, email), fetch from `profiles` table using `referred_user_id` — but RLS on profiles only allows users to see their own profile
+  - **Database migration**: Add a new RLS policy on `profiles` that allows affiliates to SELECT profiles of their referred users (using a subquery on referrals table)
+  - Display columns: Name, Sign-up Date, Status (with badge)
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-assignment/index.ts` | Add temperature, burstiness prompt, multi-pass humanize loop with re-check, lower threshold to 40%, store final scores |
-
-### Notes
-- The internal AI detection check is a rough heuristic, not a substitute for real detectors. The most impactful improvement is the prompt engineering (burstiness, imperfections, temperature) rather than the check-and-rewrite loop.
-- Each additional humanize pass costs an extra API call (~3-5 seconds latency per pass).
+| Migration SQL | Add `contact_name`, `contact_email`, `contact_phone` to affiliates; update default commission to 0.50; update existing rows; add RLS policy on profiles for affiliate access |
+| `src/pages/AffiliateApply.tsx` | Add name/email/phone fields; update commission text to 50% |
+| `src/pages/AffiliateDashboard.tsx` | Add "Referred Users" table with name, date, status; fetch profile data for each referral |
 
