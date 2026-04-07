@@ -14,6 +14,7 @@ const AffiliateDashboard = () => {
   const [affiliate, setAffiliate] = useState<any>(null);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [connectLoading, setConnectLoading] = useState(false);
   const navigate = useNavigate();
