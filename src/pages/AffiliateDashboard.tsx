@@ -267,8 +267,67 @@ const AffiliateDashboard = () => {
                 </CardContent>
               </Card>
             </div>
-          </>
-        )}
+
+            {/* Analytics Charts */}
+            <div className="grid md:grid-cols-2 gap-4 mb-8">
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                  <BarChart3 className="h-5 w-5 text-accent" />
+                  <CardTitle className="text-lg">Referrals per Week</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={weeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="week" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "var(--radius)",
+                            color: "hsl(var(--foreground))",
+                            fontSize: 13,
+                          }}
+                        />
+                        <Bar dataKey="referrals" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={32} name="Sign-ups" />
+                        <Bar dataKey="subscribed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={32} name="Subscribed" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                  <TrendingUp className="h-5 w-5 text-accent" />
+                  <CardTitle className="text-lg">Conversion Rate</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={conversionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                        <YAxis tick={{ fontSize: 12 }} className="fill-muted-foreground" unit="%" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "var(--radius)",
+                            color: "hsl(var(--foreground))",
+                            fontSize: 13,
+                          }}
+                          formatter={(value: number) => [`${value}%`, "Conversion"]}
+                        />
+                        <Line type="monotone" dataKey="rate" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ fill: "hsl(var(--accent))", r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
         {affiliate?.status === "approved" && referrals.length > 0 && (
           <Card className="mb-6">
