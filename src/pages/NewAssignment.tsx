@@ -417,7 +417,7 @@ const NewAssignment = () => {
                     <CreditCard className="h-5 w-5 text-accent" />
                     <div>
                       <p className="font-medium text-foreground">Credit Cost</p>
-                      <p className="text-sm text-muted-foreground">{creditCost} credits ({wordCount[0].toLocaleString()} words ÷ 100)</p>
+                      <p className="text-sm text-muted-foreground">{creditCost.toLocaleString()} words from your balance</p>
                     </div>
                   </div>
                   <div className="text-right">
