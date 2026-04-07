@@ -367,6 +367,9 @@ const AssignmentEditor = () => {
           </CardContent>
         </Card>
 
+        {/* Generation Report */}
+        <GenerationReport metadata={(assignment as any).generation_metadata} />
+
         {/* Reference Validator */}
         <ReferenceValidator references={assignment.references_list} assignmentId={id!} />
       </div>
