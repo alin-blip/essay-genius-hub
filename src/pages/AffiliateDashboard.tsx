@@ -108,6 +108,60 @@ const AffiliateDashboard = () => {
 
   const subscribedCount = referrals.filter((r) => r.status === "subscribed").length;
 
+  // Weekly referrals chart data (last 8 weeks)
+  const weeklyData = useMemo(() => {
+    const weeks: { week: string; referrals: number; subscribed: number }[] = [];
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - i * 7);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+      const label = weekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+      const weekRefs = referrals.filter((r) => {
+        const d = new Date(r.created_at);
+        return d >= weekStart && d < weekEnd;
+      });
+      weeks.push({
+        week: label,
+        referrals: weekRefs.length,
+        subscribed: weekRefs.filter((r) => r.status === "subscribed").length,
+      });
+    }
+    return weeks;
+  }, [referrals]);
+
+  // Conversion rate over time (cumulative)
+  const conversionData = useMemo(() => {
+    if (referrals.length === 0) return [];
+    const sorted = [...referrals].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const points: { date: string; rate: number }[] = [];
+    let total = 0;
+    let converted = 0;
+    // Group by week
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - i * 7);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+      const label = weekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+      const weekRefs = sorted.filter((r) => {
+        const d = new Date(r.created_at);
+        return d >= weekStart && d < weekEnd;
+      });
+      total += weekRefs.length;
+      converted += weekRefs.filter((r) => r.status === "subscribed").length;
+      points.push({
+        date: label,
+        rate: total > 0 ? Math.round((converted / total) * 100) : 0,
+      });
+    }
+    return points;
+  }, [referrals]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
