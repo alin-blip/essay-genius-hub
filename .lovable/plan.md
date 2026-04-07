@@ -1,46 +1,27 @@
 
 
-# Assignment Manager Upsell — 3 Tiers
+## Fix: Word Count Deduction Bug
 
-## Current State
-Single upsell: Assignment Manager at £100/mo. Need to expand to 3 options.
+### Problem
+The `credits_balance` field stores **word counts** (e.g., 5000 for free, 6000 for Student Basic), but the `generate-assignment` function deducts `Math.ceil(word_count / 100)` instead of the actual `word_count`. So a 3000-word assignment only deducts 30 instead of 3000.
 
-## New Upsell Options
+### Root Cause
+Line 148 in `supabase/functions/generate-assignment/index.ts`:
+```
+const creditCost = Math.ceil(word_count / 100);
+```
+This divides by 100 as if 1 credit = 100 words, but `credits_balance` already represents words directly (confirmed by `TIER_CREDITS` in `check-subscription` which sets values like 6000, 14000, etc.).
 
-| Option | Price | Billing | What's Included |
-|--------|-------|---------|-----------------|
-| Monthly Manager | £100/mo | Monthly recurring | Manages assignments monthly — generates, exports, uploads |
-| Academic Year | £499 | One-time (or annual) | All assignments for the full academic year, done + uploaded |
-| Final Year + Dissertation | £997 | One-time (or annual) | Everything in Academic Year + dissertation/final project (Level 6 students) |
+### Fix
 
-## Technical Steps
+**1. Update `generate-assignment/index.ts`**
+- Change `creditCost` calculation from `Math.ceil(word_count / 100)` to simply `word_count`
+- Update the insufficient credits check accordingly
+- Update the deduction and response to use the correct value
 
-### Step 1: Create 2 New Stripe Products
-- **Academic Year Manager** — £499 recurring yearly (or one-time)
-- **Final Year + Dissertation Manager** — £997 recurring yearly (or one-time)
-- Keep existing £100/mo product as-is
+**2. Fix existing user balances (optional migration)**
+- The current user with `credits_balance = 4950` should actually be at `5000 - 3000 - 500 = 1500` if tracked correctly. A one-time correction may be needed, or we can leave it as-is since the incorrect deductions gave users more credits than they should have.
 
-### Step 2: Update `subscription-tiers.ts`
-- Replace single `MANAGER_ADDON` with `MANAGER_ADDONS` array containing all 3 options with price IDs, descriptions, and billing intervals
-
-### Step 3: Update `check-subscription` Edge Function
-- Recognize all 3 manager product IDs (not just one)
-- Return which manager tier is active (monthly, academic_year, final_year)
-
-### Step 4: Update `PricingSection.tsx`
-- Replace single add-on card with 3 cards in a grid
-- Each card shows price, billing period, features, and a CTA button
-
-### Step 5: Update Dashboard Upsell Modal
-- Show all 3 manager options instead of just the £100/mo one
-
-### Step 6: Update `useAuth.tsx`
-- Track manager addon tier (not just boolean) — `managerTier: 'monthly' | 'academic_year' | 'final_year' | null`
-
-## Files Changed
-- `src/lib/subscription-tiers.ts` — 3 manager addon configs
-- `src/components/landing/PricingSection.tsx` — 3 upsell cards
-- `supabase/functions/check-subscription/index.ts` — recognize 3 manager products
-- `src/hooks/useAuth.tsx` — manager tier state
-- `src/pages/Dashboard.tsx` — upsell modal with 3 options
+### Files Changed
+- `supabase/functions/generate-assignment/index.ts` — fix the credit cost calculation (single line change + update references)
 
