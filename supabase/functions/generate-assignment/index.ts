@@ -578,7 +578,6 @@ The JSON must have exactly these fields:
       // Update metadata with final post-humanize AI detection scores
       generationMetadata.ai_detection = aiDetectionResult;
     }
-    }
 
     // Save assignment to DB
     const { data: assignment, error: insertError } = await supabase
