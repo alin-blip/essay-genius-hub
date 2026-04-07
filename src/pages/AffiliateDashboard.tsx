@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { GraduationCap, ArrowLeft, Copy, ExternalLink, Users, TrendingUp, PoundSterling, Clock } from "lucide-react";
+import { GraduationCap, ArrowLeft, Copy, ExternalLink, Users, TrendingUp, PoundSterling, Clock, BarChart3 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 
 const AffiliateDashboard = () => {
   const { user } = useAuth();
@@ -106,6 +107,60 @@ const AffiliateDashboard = () => {
     .reduce((sum, p) => sum + p.amount_pence, 0);
 
   const subscribedCount = referrals.filter((r) => r.status === "subscribed").length;
+
+  // Weekly referrals chart data (last 8 weeks)
+  const weeklyData = useMemo(() => {
+    const weeks: { week: string; referrals: number; subscribed: number }[] = [];
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - i * 7);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+      const label = weekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+      const weekRefs = referrals.filter((r) => {
+        const d = new Date(r.created_at);
+        return d >= weekStart && d < weekEnd;
+      });
+      weeks.push({
+        week: label,
+        referrals: weekRefs.length,
+        subscribed: weekRefs.filter((r) => r.status === "subscribed").length,
+      });
+    }
+    return weeks;
+  }, [referrals]);
+
+  // Conversion rate over time (cumulative)
+  const conversionData = useMemo(() => {
+    if (referrals.length === 0) return [];
+    const sorted = [...referrals].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const points: { date: string; rate: number }[] = [];
+    let total = 0;
+    let converted = 0;
+    // Group by week
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - i * 7);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+      const label = weekStart.toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+      const weekRefs = sorted.filter((r) => {
+        const d = new Date(r.created_at);
+        return d >= weekStart && d < weekEnd;
+      });
+      total += weekRefs.length;
+      converted += weekRefs.filter((r) => r.status === "subscribed").length;
+      points.push({
+        date: label,
+        rate: total > 0 ? Math.round((converted / total) * 100) : 0,
+      });
+    }
+    return points;
+  }, [referrals]);
 
   if (loading) {
     return (
@@ -209,6 +264,67 @@ const AffiliateDashboard = () => {
                   <PoundSterling className="h-6 w-6 text-accent mx-auto mb-2" />
                   <p className="text-2xl font-bold text-primary">£{(totalEarnings / 100).toFixed(2)}</p>
                   <p className="text-sm text-muted-foreground">Lifetime Earnings</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Analytics Charts */}
+            <div className="grid md:grid-cols-2 gap-4 mb-8">
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                  <BarChart3 className="h-5 w-5 text-accent" />
+                  <CardTitle className="text-lg">Referrals per Week</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={weeklyData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="week" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} className="fill-muted-foreground" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "var(--radius)",
+                            color: "hsl(var(--foreground))",
+                            fontSize: 13,
+                          }}
+                        />
+                        <Bar dataKey="referrals" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} maxBarSize={32} name="Sign-ups" />
+                        <Bar dataKey="subscribed" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={32} name="Subscribed" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                  <TrendingUp className="h-5 w-5 text-accent" />
+                  <CardTitle className="text-lg">Conversion Rate</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={conversionData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                        <XAxis dataKey="date" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                        <YAxis tick={{ fontSize: 12 }} className="fill-muted-foreground" unit="%" />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "var(--radius)",
+                            color: "hsl(var(--foreground))",
+                            fontSize: 13,
+                          }}
+                          formatter={(value: number) => [`${value}%`, "Conversion"]}
+                        />
+                        <Line type="monotone" dataKey="rate" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ fill: "hsl(var(--accent))", r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </CardContent>
               </Card>
             </div>
