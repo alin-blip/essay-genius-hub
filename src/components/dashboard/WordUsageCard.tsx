@@ -56,10 +56,12 @@ const WordUsageCard = ({ creditsBalance, totalWords, assignments }: WordUsageCar
           </div>
           {!isUnlimited && (
             <div className="space-y-1">
-              <Progress
-                value={usagePercent}
-                className={`h-3 [&>div]:${barColor}`}
-              />
+              <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={`h-full transition-all ${barColor}`}
+                  style={{ width: `${usagePercent}%` }}
+                />
+              </div>
               <p className="text-xs text-muted-foreground text-right">
                 {wordsUsed.toLocaleString()} words used ({Math.round(usagePercent)}%)
               </p>
