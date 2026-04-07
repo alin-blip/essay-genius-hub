@@ -12,6 +12,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 const AffiliateApply = () => {
   const { user, loading: authLoading } = useAuth();
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [socialMedia, setSocialMedia] = useState("");
   const [reason, setReason] = useState("");
