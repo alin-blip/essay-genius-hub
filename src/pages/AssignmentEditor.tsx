@@ -282,6 +282,7 @@ const AssignmentEditor = () => {
             )}
 
             <AiDetectionScore content={activeContent || ""} assignmentId={id!} />
+            <SimilarityScore content={activeContent || ""} assignmentId={id!} />
 
             <div className="flex-1" />
 
