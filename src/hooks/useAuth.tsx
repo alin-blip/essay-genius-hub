@@ -72,6 +72,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             { affiliate_id: affId, referred_user_id: session.user.id, status: "signed_up" },
             { onConflict: "referred_user_id" }
           );
+          // Notify affiliate about the new sign-up
+          const { data: affiliate } = await supabase
+            .from("affiliates")
+            .select("contact_email, contact_name")
+            .eq("id", affId)
+            .maybeSingle();
+          if (affiliate?.contact_email) {
+            supabase.functions.invoke("send-transactional-email", {
+              body: {
+                templateName: "referral-signup",
+                recipientEmail: affiliate.contact_email,
+                idempotencyKey: `referral-signup-${affId}-${session.user.id}`,
+                templateData: {
+                  affiliateName: affiliate.contact_name || undefined,
+                  referralEmail: session.user.email,
+                },
+              },
+            });
+          }
           localStorage.removeItem("ref_affiliate_id");
           localStorage.removeItem("ref_code");
           localStorage.removeItem("ref_ts");
