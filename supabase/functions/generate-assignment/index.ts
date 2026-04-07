@@ -171,6 +171,20 @@ serve(async (req) => {
 - You occasionally start sentences with "And" or "But" 
 - You use contractions naturally: "doesn't", "isn't", "won't", "it's"
 - You sometimes write in a slightly conversational way before catching yourself and becoming more formal again
+- You use filler phrases a student would: "to be fair", "in a way", "if anything", "I suppose", "arguably"
+
+## BURSTINESS (CRITICAL FOR BYPASSING AI DETECTORS)
+AI detectors measure "burstiness" — how much sentence length and complexity varies. Real human writing has HIGH burstiness. AI writing has low burstiness (uniform sentences).
+- Alternate dramatically: write a 35-word complex sentence, then a 4-word punchy one. Then a medium one. Then two short ones in a row. Then a sprawling one.
+- Have at least one paragraph that's just 1-2 sentences.
+- Have at least one paragraph that runs 7+ sentences and feels slightly too long.
+- Include at least 2-3 sentence fragments throughout: "A fair point." "Not quite." "Easier said than done."
+
+## DELIBERATE IMPERFECTIONS (makes it feel authentically student-written)
+- Include one parenthetical aside that slightly derails before getting back on track
+- Have one transition that feels slightly forced or awkward
+- In one place, make a point then partially repeat it 2 paragraphs later in different words (students do this)
+- Use one slightly informal phrase that's borderline too casual for academic writing, then immediately follow with a formal sentence
 - You make minor redundancies — saying something twice in slightly different ways
 - Your vocabulary is good but not artificially perfect. You repeat key terms rather than finding 5 synonyms.
 - You use British English: analyse, organisation, behaviour, colour, programme, centre, defence
@@ -264,6 +278,7 @@ REMEMBER: You MUST write at least ${word_count} words. Write the full assignment
       },
       body: JSON.stringify({
         model: "openai/gpt-5",
+        temperature: 1.1,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -439,11 +454,18 @@ The JSON must have exactly these fields:
       similarity: similarityResult,
     };
 
-    // --- Auto-humanize if AI detection score > 60% ---
+    // --- Auto-humanize multi-pass loop (threshold: 40%) ---
     let humanizedContent: string | null = null;
-    if (aiDetectionResult && aiDetectionResult.overall_score > 60) {
+    let currentAiScore = aiDetectionResult?.overall_score ?? 0;
+    let passCount = 0;
+    const MAX_HUMANIZE_PASSES = 3;
+    const HUMANIZE_THRESHOLD = 40;
+    let contentToHumanize = generatedContent;
+
+    while (currentAiScore > HUMANIZE_THRESHOLD && passCount < MAX_HUMANIZE_PASSES) {
+      passCount++;
       try {
-        console.log(`AI detection score ${aiDetectionResult.overall_score}% — auto-humanizing...`);
+        console.log(`Pass ${passCount}: AI score ${currentAiScore}% > ${HUMANIZE_THRESHOLD}% — humanizing...`);
         const humanizeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -452,37 +474,109 @@ The JSON must have exactly these fields:
           },
           body: JSON.stringify({
             model: "openai/gpt-5",
+            temperature: 1.1,
             messages: [
               {
                 role: "system",
                 content: `You are rewriting AI-generated academic text so that AI detectors score it BELOW 15%. You are a real student rewriting your own draft because it "sounded too robotic."
 
 RULES:
-- Break predictable AI sentence patterns — vary lengths dramatically
+- Break predictable AI sentence patterns — vary lengths DRAMATICALLY (4-word sentence then 35-word sentence)
 - Replace formal AI vocabulary: "utilise"→"use", "demonstrate"→"show", "facilitate"→"help", "subsequently"→"then", "furthermore"→"also", "consequently"→"so"
-- Remove banned words: "delve", "tapestry", "multifaceted", "nuanced", "intricate", "pivotal"
-- Add contractions: "doesn't", "isn't", "can't", "it's"
-- Start some paragraphs with "But", "And", "So"
+- Remove banned words: "delve", "tapestry", "multifaceted", "nuanced", "intricate", "pivotal", "comprehensive", "robust"
+- Add contractions everywhere: "doesn't", "isn't", "can't", "it's", "won't", "they're"
+- Start some paragraphs with "But", "And", "So", "Look,"
 - Add rhetorical questions, parenthetical asides, em dashes
+- Include filler phrases: "to be fair", "in a way", "if anything", "I suppose"
+- Add 1-2 sentence fragments: "A valid point." "Not entirely."
+- Make one transition slightly awkward on purpose
+- Vary paragraph lengths wildly — one 2-sentence paragraph, one 7+ sentence paragraph
 - Preserve all Harvard references, factual claims, data, markdown formatting, British English, and word count
 - Return ONLY the rewritten text. No explanations.`,
               },
-              { role: "user", content: `Rewrite this text to bypass AI detection:\n\n${generatedContent}` },
+              { role: "user", content: `Rewrite this text to bypass AI detection:\n\n${contentToHumanize}` },
             ],
           }),
         });
 
         if (humanizeResponse.ok) {
           const humanizeData = await humanizeResponse.json();
-          humanizedContent = humanizeData.choices?.[0]?.message?.content || null;
-          if (humanizedContent) {
-            generationMetadata.auto_humanized = true;
-            generationMetadata.auto_humanize_reason = `AI detection score was ${aiDetectionResult.overall_score}% (threshold: 60%)`;
+          const rewritten = humanizeData.choices?.[0]?.message?.content;
+          if (rewritten) {
+            humanizedContent = rewritten;
+            contentToHumanize = rewritten;
+
+            // Re-check AI detection on the humanized version
+            try {
+              const sampleForRecheck = rewritten.length > 5000 ? rewritten.slice(0, 5000) : rewritten;
+              const recheckResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "google/gemini-2.5-flash",
+                  messages: [
+                    {
+                      role: "system",
+                      content: `You are an AI detection analysis expert. Analyze the given text and estimate how likely it is to be flagged as AI-generated by common detectors (Turnitin AI, GPTZero, Winston AI, Originality.ai).
+
+You MUST respond with ONLY a valid JSON object. No other text, no markdown, no code blocks.
+
+The JSON must have exactly these fields:
+{
+  "overall_score": <number 0-100, percentage likely AI-detected>,
+  "human_score": <number 0-100, percentage appearing human-written>,
+  "details": "<string: 1-2 sentence analysis>"
+}`,
+                    },
+                    { role: "user", content: `Analyze this text for AI detection:\n\n${sampleForRecheck}` },
+                  ],
+                  temperature: 0.3,
+                }),
+              });
+
+              if (recheckResponse.ok) {
+                const recheckData = await recheckResponse.json();
+                const rawContent = recheckData.choices?.[0]?.message?.content?.trim();
+                try {
+                  const cleaned = rawContent.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+                  const parsed = JSON.parse(cleaned);
+                  currentAiScore = Math.min(100, Math.max(0, Math.round(parsed.overall_score)));
+                  // Update the stored AI detection with latest results
+                  aiDetectionResult = {
+                    overall_score: currentAiScore,
+                    human_score: Math.min(100, Math.max(0, Math.round(parsed.human_score))),
+                    details: parsed.details || "Analysis complete.",
+                  };
+                  console.log(`Pass ${passCount} re-check: AI score now ${currentAiScore}%`);
+                } catch {
+                  console.log(`Pass ${passCount} re-check: could not parse, stopping loop`);
+                  break;
+                }
+              }
+            } catch (e) {
+              console.error(`Pass ${passCount} re-check failed:`, e);
+              break;
+            }
           }
+        } else {
+          console.error(`Humanize pass ${passCount} failed with status ${humanizeResponse.status}`);
+          break;
         }
       } catch (e) {
-        console.error("Auto-humanize failed:", e);
+        console.error(`Auto-humanize pass ${passCount} failed:`, e);
+        break;
       }
+    }
+
+    if (humanizedContent) {
+      generationMetadata.auto_humanized = true;
+      generationMetadata.humanize_passes = passCount;
+      generationMetadata.auto_humanize_reason = `Initial AI score was ${generationMetadata.ai_detection?.overall_score ?? '?'}% → final ${currentAiScore}% after ${passCount} pass(es) (threshold: ${HUMANIZE_THRESHOLD}%)`;
+      // Update metadata with final post-humanize AI detection scores
+      generationMetadata.ai_detection = aiDetectionResult;
     }
 
     // Save assignment to DB
