@@ -14,6 +14,7 @@ const AffiliateDashboard = () => {
   const [affiliate, setAffiliate] = useState<any>(null);
   const [referrals, setReferrals] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
+  const [profileMap, setProfileMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [connectLoading, setConnectLoading] = useState(false);
   const navigate = useNavigate();
@@ -39,7 +40,20 @@ const AffiliateDashboard = () => {
         .select("*")
         .eq("affiliate_id", aff.id)
         .order("created_at", { ascending: false });
-      setReferrals(refs || []);
+      const refList = refs || [];
+      setReferrals(refList);
+
+      // Fetch profiles for referred users
+      const userIds = refList.map((r) => r.referred_user_id);
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", userIds);
+        const map: Record<string, string> = {};
+        (profs || []).forEach((p) => { map[p.user_id] = p.full_name || "Unknown"; });
+        setProfileMap(map);
+      }
 
       const { data: pays } = await supabase
         .from("affiliate_payouts")
@@ -199,6 +213,38 @@ const AffiliateDashboard = () => {
               </Card>
             </div>
           </>
+        )}
+
+        {affiliate?.status === "approved" && referrals.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Referred Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Sign-up Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {referrals.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{profileMap[r.referred_user_id] || "—"}</TableCell>
+                      <TableCell>{new Date(r.created_at).toLocaleDateString("en-GB")}</TableCell>
+                      <TableCell>
+                        <Badge variant={r.status === "subscribed" ? "default" : "secondary"}>
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         )}
 
         {affiliate?.status === "approved" && payouts.length > 0 && (

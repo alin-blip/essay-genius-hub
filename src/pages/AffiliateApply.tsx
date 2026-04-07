@@ -12,6 +12,9 @@ import { supabase } from "@/integrations/supabase/client";
 
 const AffiliateApply = () => {
   const { user, loading: authLoading } = useAuth();
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [website, setWebsite] = useState("");
   const [socialMedia, setSocialMedia] = useState("");
   const [reason, setReason] = useState("");
@@ -54,6 +57,9 @@ const AffiliateApply = () => {
     const { error } = await supabase.from("affiliates").insert({
       user_id: user.id,
       affiliate_code: generateCode(),
+      contact_name: contactName,
+      contact_email: contactEmail,
+      contact_phone: contactPhone,
       website: website || null,
       social_media: socialMedia || null,
       reason,
@@ -110,7 +116,7 @@ const AffiliateApply = () => {
           </div>
           <h1 className="text-4xl font-bold text-primary mb-4">Affiliate Programme</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Earn <span className="text-accent font-bold">30% recurring commission</span> for every student you refer. 
+            Earn <span className="text-accent font-bold">50% recurring commission</span> for every student you refer. 
             Paid directly to your bank account via Stripe every month.
           </p>
         </div>
@@ -133,7 +139,7 @@ const AffiliateApply = () => {
           <Card className="text-center">
             <CardContent className="pt-6">
               <DollarSign className="h-10 w-10 text-accent mx-auto mb-3" />
-              <h3 className="font-semibold text-primary mb-1">You Earn 30%</h3>
+              <h3 className="font-semibold text-primary mb-1">You Earn 50%</h3>
               <p className="text-sm text-muted-foreground">Recurring monthly commission, paid via Stripe</p>
             </CardContent>
           </Card>
@@ -157,6 +163,18 @@ const AffiliateApply = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contactName">Full Name *</Label>
+                  <Input id="contactName" placeholder="Your full name" value={contactName} onChange={(e) => setContactName(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactEmail">Email Address *</Label>
+                  <Input id="contactEmail" type="email" placeholder="you@example.com" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactPhone">Phone Number *</Label>
+                  <Input id="contactPhone" type="tel" placeholder="+44 7xxx xxx xxx" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} required />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="website">Website / Blog (optional)</Label>
                   <Input id="website" placeholder="https://yourblog.com" value={website} onChange={(e) => setWebsite(e.target.value)} />
