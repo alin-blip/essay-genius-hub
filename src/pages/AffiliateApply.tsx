@@ -57,6 +57,9 @@ const AffiliateApply = () => {
     const { error } = await supabase.from("affiliates").insert({
       user_id: user.id,
       affiliate_code: generateCode(),
+      contact_name: contactName,
+      contact_email: contactEmail,
+      contact_phone: contactPhone,
       website: website || null,
       social_media: socialMedia || null,
       reason,
