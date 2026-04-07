@@ -139,7 +139,7 @@ const AffiliateApply = () => {
           <Card className="text-center">
             <CardContent className="pt-6">
               <DollarSign className="h-10 w-10 text-accent mx-auto mb-3" />
-              <h3 className="font-semibold text-primary mb-1">You Earn 30%</h3>
+              <h3 className="font-semibold text-primary mb-1">You Earn 50%</h3>
               <p className="text-sm text-muted-foreground">Recurring monthly commission, paid via Stripe</p>
             </CardContent>
           </Card>
