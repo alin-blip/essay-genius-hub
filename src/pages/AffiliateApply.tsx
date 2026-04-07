@@ -164,6 +164,18 @@ const AffiliateApply = () => {
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="contactName">Full Name *</Label>
+                  <Input id="contactName" placeholder="Your full name" value={contactName} onChange={(e) => setContactName(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactEmail">Email Address *</Label>
+                  <Input id="contactEmail" type="email" placeholder="you@example.com" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactPhone">Phone Number *</Label>
+                  <Input id="contactPhone" type="tel" placeholder="+44 7xxx xxx xxx" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="website">Website / Blog (optional)</Label>
                   <Input id="website" placeholder="https://yourblog.com" value={website} onChange={(e) => setWebsite(e.target.value)} />
                 </div>

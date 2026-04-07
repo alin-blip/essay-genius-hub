@@ -215,6 +215,38 @@ const AffiliateDashboard = () => {
           </>
         )}
 
+        {affiliate?.status === "approved" && referrals.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Referred Users</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Sign-up Date</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {referrals.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell>{profileMap[r.referred_user_id] || "—"}</TableCell>
+                      <TableCell>{new Date(r.created_at).toLocaleDateString("en-GB")}</TableCell>
+                      <TableCell>
+                        <Badge variant={r.status === "subscribed" ? "default" : "secondary"}>
+                          {r.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
         {affiliate?.status === "approved" && payouts.length > 0 && (
           <Card>
             <CardHeader>
