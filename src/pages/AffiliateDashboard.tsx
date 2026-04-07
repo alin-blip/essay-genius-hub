@@ -39,7 +39,20 @@ const AffiliateDashboard = () => {
         .select("*")
         .eq("affiliate_id", aff.id)
         .order("created_at", { ascending: false });
-      setReferrals(refs || []);
+      const refList = refs || [];
+      setReferrals(refList);
+
+      // Fetch profiles for referred users
+      const userIds = refList.map((r) => r.referred_user_id);
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", userIds);
+        const map: Record<string, string> = {};
+        (profs || []).forEach((p) => { map[p.user_id] = p.full_name || "Unknown"; });
+        setProfileMap(map);
+      }
 
       const { data: pays } = await supabase
         .from("affiliate_payouts")
