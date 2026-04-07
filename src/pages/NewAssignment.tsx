@@ -123,7 +123,7 @@ const NewAssignment = () => {
     };
   }, [generating]);
 
-  const creditCost = Math.ceil(wordCount[0] / 100);
+  const creditCost = wordCount[0];
 
   const canProceed = () => {
     if (step === 1) return !!moduleName && !!title;
