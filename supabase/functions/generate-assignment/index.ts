@@ -439,6 +439,52 @@ The JSON must have exactly these fields:
       similarity: similarityResult,
     };
 
+    // --- Auto-humanize if AI detection score > 60% ---
+    let humanizedContent: string | null = null;
+    if (aiDetectionResult && aiDetectionResult.overall_score > 60) {
+      try {
+        console.log(`AI detection score ${aiDetectionResult.overall_score}% — auto-humanizing...`);
+        const humanizeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "openai/gpt-5",
+            messages: [
+              {
+                role: "system",
+                content: `You are rewriting AI-generated academic text so that AI detectors score it BELOW 15%. You are a real student rewriting your own draft because it "sounded too robotic."
+
+RULES:
+- Break predictable AI sentence patterns — vary lengths dramatically
+- Replace formal AI vocabulary: "utilise"→"use", "demonstrate"→"show", "facilitate"→"help", "subsequently"→"then", "furthermore"→"also", "consequently"→"so"
+- Remove banned words: "delve", "tapestry", "multifaceted", "nuanced", "intricate", "pivotal"
+- Add contractions: "doesn't", "isn't", "can't", "it's"
+- Start some paragraphs with "But", "And", "So"
+- Add rhetorical questions, parenthetical asides, em dashes
+- Preserve all Harvard references, factual claims, data, markdown formatting, British English, and word count
+- Return ONLY the rewritten text. No explanations.`,
+              },
+              { role: "user", content: `Rewrite this text to bypass AI detection:\n\n${generatedContent}` },
+            ],
+          }),
+        });
+
+        if (humanizeResponse.ok) {
+          const humanizeData = await humanizeResponse.json();
+          humanizedContent = humanizeData.choices?.[0]?.message?.content || null;
+          if (humanizedContent) {
+            generationMetadata.auto_humanized = true;
+            generationMetadata.auto_humanize_reason = `AI detection score was ${aiDetectionResult.overall_score}% (threshold: 60%)`;
+          }
+        }
+      } catch (e) {
+        console.error("Auto-humanize failed:", e);
+      }
+    }
+
     // Save assignment to DB
     const { data: assignment, error: insertError } = await supabase
       .from("assignments")
@@ -455,6 +501,7 @@ The JSON must have exactly these fields:
         include_harvard_refs,
         include_case_studies,
         generated_content: generatedContent,
+        humanized_content: humanizedContent,
         status: "completed",
         generation_metadata: generationMetadata,
       } as any)
