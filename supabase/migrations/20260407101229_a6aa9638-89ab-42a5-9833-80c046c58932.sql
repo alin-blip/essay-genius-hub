@@ -1,0 +1,1 @@
+ALTER TABLE public.assignments ADD COLUMN generation_metadata jsonb DEFAULT NULL;

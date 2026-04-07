@@ -153,6 +153,9 @@ serve(async (req) => {
       });
     }
 
+    // Generate a unique session seed for uniqueness guarantee
+    const sessionSeed = crypto.randomUUID() + "-" + Date.now();
+
     // Build the system prompt — target 15% OVER requested word count to ensure minimum met
     const targetWords = Math.ceil(word_count * 1.15);
     const gradeInstruction = GRADE_INSTRUCTIONS[target_grade] || GRADE_INSTRUCTIONS.merit;
@@ -189,6 +192,22 @@ serve(async (req) => {
 - Use sentence fragments occasionally: "A significant finding." "Not entirely convincing."
 - Include compound-complex sentences that feel slightly unwieldy — like a student trying to pack too much in
 - Mix declarative, interrogative, and occasional exclamatory sentences
+
+## DATA, CHARTS & FINANCIAL STATEMENTS
+If the assignment brief mentions charts, graphs, tables, data analysis, balance sheets, income statements, cash flow statements, trial balances, or any accounting/financial documents:
+- Create detailed markdown tables with realistic but fictional data
+- For accounting: produce properly formatted Balance Sheets, P&L / Income Statements, Cash Flow Statements with correct double-entry structure
+- For data analysis: create data tables and describe chart interpretations (bar charts, pie charts, line graphs) with textual analysis
+- Use proper accounting conventions (debits/credits, totals, sub-totals)
+- Label all figures (Figure 1, Table 1, etc.) and reference them in the text
+Note: Since output is markdown text, describe visual charts in detail and provide the underlying data in table format.
+
+## UNIQUENESS REQUIREMENT
+Every assignment you write must be completely unique. Use this unique seed to vary your approach: ${sessionSeed}
+- Choose different opening angles, examples, case studies, and argument orderings each time
+- Vary your sentence structures, paragraph lengths, and transitions
+- Select different references and cite them in different combinations
+- Never produce the same introduction, conclusion, or argument flow twice
 
 ## Grade Level
 ${gradeInstruction}
@@ -285,6 +304,27 @@ REMEMBER: You MUST write at least ${word_count} words. Write the full assignment
       });
     }
 
+    // Post-generation analysis
+    const actualWordCount = generatedContent.split(/\s+/).filter((w: string) => w.length > 0).length;
+    const referencesCount = (generatedContent.match(/\([A-Z][a-z]+(?:\s(?:and|&)\s[A-Z][a-z]+)?,\s*\d{4}\)/g) || []).length;
+    const tablesCount = (generatedContent.match(/\|[-:]+\|/g) || []).length;
+    const figuresMentioned = (generatedContent.match(/(?:Figure|Table|Chart|Graph)\s+\d+/gi) || []).length;
+    const financialKeywords = ["balance sheet", "income statement", "cash flow", "trial balance", "profit and loss", "p&l"];
+    const hasFinancialData = financialKeywords.some(kw => generatedContent.toLowerCase().includes(kw));
+    const hasCaseStudies = include_case_studies && /case\s+stud/i.test(generatedContent);
+
+    const generationMetadata = {
+      actual_word_count: actualWordCount,
+      requested_word_count: word_count,
+      references_count: referencesCount,
+      tables_count: tablesCount,
+      figures_mentioned: figuresMentioned,
+      has_financial_data: hasFinancialData,
+      includes_case_studies: hasCaseStudies,
+      uniqueness_seed: sessionSeed,
+      generated_at: new Date().toISOString(),
+    };
+
     // Save assignment to DB
     const { data: assignment, error: insertError } = await supabase
       .from("assignments")
@@ -302,7 +342,8 @@ REMEMBER: You MUST write at least ${word_count} words. Write the full assignment
         include_case_studies,
         generated_content: generatedContent,
         status: "completed",
-      })
+        generation_metadata: generationMetadata,
+      } as any)
       .select()
       .single();
 
@@ -328,6 +369,7 @@ REMEMBER: You MUST write at least ${word_count} words. Write the full assignment
         content: generatedContent,
         credits_used: creditCost,
         credits_remaining: profile.credits_balance - creditCost,
+        generation_report: generationMetadata,
       }),
       {
         status: 200,

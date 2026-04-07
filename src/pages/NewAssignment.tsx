@@ -123,7 +123,7 @@ const NewAssignment = () => {
     };
   }, [generating]);
 
-  const creditCost = Math.ceil(wordCount[0] / 100);
+  const creditCost = wordCount[0];
 
   const canProceed = () => {
     if (step === 1) return !!moduleName && !!title;
@@ -206,9 +206,15 @@ const NewAssignment = () => {
 
       setTimeout(() => {
         setGenerating(false);
+        const report = data.generation_report;
+        const extras = [];
+        if (report?.references_count) extras.push(`${report.references_count} references`);
+        if (report?.tables_count) extras.push(`${report.tables_count} tables`);
+        if (report?.has_financial_data) extras.push("financial data included");
+        const extraInfo = extras.length ? ` · ${extras.join(", ")}` : "";
         toast({
           title: "Assignment Generated! ✨",
-          description: `${data.credits_used} credits used. ${data.credits_remaining} remaining.`,
+          description: `${report?.actual_word_count?.toLocaleString() || data.credits_used.toLocaleString()} words generated. ${data.credits_remaining.toLocaleString()} words remaining.${extraInfo}`,
         });
         navigate(`/assignment/${data.assignment_id}`);
       }, 1000);
@@ -417,7 +423,7 @@ const NewAssignment = () => {
                     <CreditCard className="h-5 w-5 text-accent" />
                     <div>
                       <p className="font-medium text-foreground">Credit Cost</p>
-                      <p className="text-sm text-muted-foreground">{creditCost} credits ({wordCount[0].toLocaleString()} words ÷ 100)</p>
+                      <p className="text-sm text-muted-foreground">{creditCost.toLocaleString()} words from your balance</p>
                     </div>
                   </div>
                   <div className="text-right">

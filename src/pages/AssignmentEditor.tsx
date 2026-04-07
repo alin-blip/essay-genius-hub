@@ -32,6 +32,7 @@ import { exportToPdf } from "@/lib/export-pdf";
 import TipTapEditor from "@/components/editor/TipTapEditor";
 import AiDetectionScore from "@/components/editor/AiDetectionScore";
 import ReferenceValidator from "@/components/editor/ReferenceValidator";
+import GenerationReport from "@/components/editor/GenerationReport";
 
 const GRADE_LABELS: Record<string, string> = {
   pass: "Pass",
@@ -365,6 +366,9 @@ const AssignmentEditor = () => {
             />
           </CardContent>
         </Card>
+
+        {/* Generation Report */}
+        <GenerationReport metadata={(assignment as any).generation_metadata} />
 
         {/* Reference Validator */}
         <ReferenceValidator references={assignment.references_list} assignmentId={id!} />
