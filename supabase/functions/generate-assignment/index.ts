@@ -278,6 +278,7 @@ REMEMBER: You MUST write at least ${word_count} words. Write the full assignment
       },
       body: JSON.stringify({
         model: "openai/gpt-5",
+        temperature: 1.1,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
