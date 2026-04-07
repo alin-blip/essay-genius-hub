@@ -1,113 +1,53 @@
 
 
-## Plan: Enhanced Assignment Generation — Charts/Data Support, Uniqueness, and Generation Report
+## Plan: Improve AI Detection Score
 
-### What the user asked for
+### Current State
 
-1. **Charts, data tables, balance sheets** — When the brief mentions graphs, spreadsheets, accounting (e.g. balance sheets, income statements), the AI should generate them (as markdown tables, formatted financial statements, etc.)
-2. **Uniqueness guarantee** — Each assignment must be unique, even for the same type/title/student. No similarity between assignments. Anti-plagiarism built in.
-3. **Generation details/report** — After generation, show a summary card with stats: word count achieved, uniqueness seed, what was included (refs count, case studies, tables/charts detected, etc.)
+The system already has:
+- Anti-AI vocabulary in the generation prompt (banned words, contractions, varied sentence lengths)
+- Auto-humanize pass if AI detection > 60%
+- AI detection self-check using Gemini Flash
 
----
+### Problem
 
-### Technical Changes
+The AI detection score is unreliable because:
+1. **Self-assessment is weak** — using one AI model to judge another AI's output is circular. Real detectors (Turnitin, GPTZero) use statistical models, not LLMs.
+2. **Single humanize pass** — one rewrite may not be enough.
+3. **No re-check after humanize** — the system never verifies the humanized version scores better.
+4. **Temperature is default** — more randomness = harder to detect.
 
-#### 1. Update system prompt in `generate-assignment/index.ts`
+### Proposed Improvements
 
-Add two new sections to the system prompt:
+#### 1. Multi-pass humanization with re-check loop
+After auto-humanize, re-run the AI detection check on the humanized text. If still above 40%, humanize again (max 2 additional passes). This iterative approach progressively reduces detectable patterns.
 
-**A. Charts, Tables & Financial Data instruction:**
-```
-## DATA, CHARTS & FINANCIAL STATEMENTS
-If the assignment brief mentions charts, graphs, tables, data analysis, balance sheets, 
-income statements, cash flow statements, trial balances, or any accounting/financial documents:
-- Create detailed markdown tables with realistic but fictional data
-- For accounting: produce properly formatted Balance Sheets, P&L / Income Statements, 
-  Cash Flow Statements with correct double-entry structure
-- For data analysis: create data tables and describe chart interpretations 
-  (bar charts, pie charts, line graphs) with textual analysis
-- Use proper accounting conventions (debits/credits, totals, sub-totals)
-- Label all figures (Figure 1, Table 1, etc.) and reference them in the text
-Note: Since output is markdown text, describe visual charts in detail and provide 
-the underlying data in table format.
-```
+#### 2. Increase generation temperature
+Set `temperature: 1.1` on the main generation call (currently default ~1.0). Higher temperature introduces more lexical randomness — a key signal real detectors look for (perplexity).
 
-**B. Uniqueness instruction — inject a random seed into the prompt:**
-- Generate a unique `sessionSeed` (random UUID + timestamp) per request
-- Add to the system prompt:
-```
-## UNIQUENESS REQUIREMENT
-Every assignment you write must be completely unique. Use this unique seed to vary your 
-approach: ${sessionSeed}
-- Choose different opening angles, examples, case studies, and argument orderings each time
-- Vary your sentence structures, paragraph lengths, and transitions
-- Select different references and cite them in different combinations
-- Never produce the same introduction, conclusion, or argument flow twice
-```
+#### 3. Add "burstiness" instruction to the prompt
+Real human writing has high "burstiness" — alternating between complex and simple sentences. Add explicit instruction to the system prompt targeting this specific metric that detectors measure.
 
-#### 2. Post-generation analysis in the edge function
+#### 4. Inject deliberate imperfections
+Add instructions to occasionally:
+- Use slightly awkward phrasing that a student would leave in
+- Include a minor self-correction mid-paragraph
+- Have one paragraph that feels slightly off-topic before refocusing
+- Use filler phrases: "to be fair", "in a way", "if anything"
 
-After receiving `generatedContent`, compute stats before returning:
+#### 5. Lower auto-humanize threshold to 40%
+Currently triggers at 60%. Lowering to 40% ensures more assignments get humanized.
 
-- **Actual word count**: `generatedContent.split(/\s+/).length`
-- **Reference count**: count occurrences matching Harvard ref patterns `(Author, Year)`
-- **Tables detected**: count markdown table occurrences (`|---|`)
-- **Figures/charts mentioned**: count `Figure \d+` or `Table \d+` patterns
-- **Has financial statements**: detect keywords like "Balance Sheet", "Income Statement"
-- **Uniqueness seed used**: return the seed for transparency
-
-Add these to the response JSON as a `generation_report` object:
-```json
-{
-  "assignment_id": "...",
-  "content": "...",
-  "credits_used": 3000,
-  "credits_remaining": 2000,
-  "generation_report": {
-    "actual_word_count": 3450,
-    "requested_word_count": 3000,
-    "references_count": 12,
-    "tables_count": 3,
-    "figures_mentioned": 2,
-    "has_financial_data": true,
-    "includes_case_studies": true,
-    "uniqueness_seed": "a1b2c3..."
-  }
-}
-```
-
-#### 3. Update `NewAssignment.tsx` — show generation report
-
-After successful generation, before navigating to the editor, show a brief toast or update the completion screen with the stats:
-
-- Change the success toast to include: actual word count, references count, tables/charts included
-- Update the credit cost display (line 126 and line 420) — currently shows `Math.ceil(wordCount[0] / 100)` and "÷ 100" which is wrong since the backend now deducts `word_count` directly. Fix to show `wordCount[0]` as the cost.
-
-#### 4. Show generation report in `AssignmentEditor.tsx`
-
-Add a collapsible "Generation Details" card in the editor sidebar showing:
-- Actual word count vs requested
-- Number of references detected
-- Tables/charts included
-- Uniqueness confirmation
-
-This data will be stored in a new `generation_metadata` column on the `assignments` table (JSONB).
-
-#### 5. Database migration
-
-Add a nullable JSONB column to `assignments`:
-```sql
-ALTER TABLE public.assignments ADD COLUMN generation_metadata jsonb DEFAULT NULL;
-```
-
----
+#### 6. Post-humanize verification in generation report
+After the final pass, re-run AI detection on the final content and store the updated score in `generation_metadata` so the user sees the actual post-humanize score.
 
 ### Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-assignment/index.ts` | Add charts/data prompt, uniqueness seed, post-generation analysis, save metadata |
-| `src/pages/NewAssignment.tsx` | Fix credit cost display (remove ÷100), show generation report in toast |
-| `src/pages/AssignmentEditor.tsx` | Add "Generation Details" collapsible card |
-| Migration | Add `generation_metadata` JSONB column to `assignments` |
+| `supabase/functions/generate-assignment/index.ts` | Add temperature, burstiness prompt, multi-pass humanize loop with re-check, lower threshold to 40%, store final scores |
+
+### Notes
+- The internal AI detection check is a rough heuristic, not a substitute for real detectors. The most impactful improvement is the prompt engineering (burstiness, imperfections, temperature) rather than the check-and-rewrite loop.
+- Each additional humanize pass costs an extra API call (~3-5 seconds latency per pass).
 
