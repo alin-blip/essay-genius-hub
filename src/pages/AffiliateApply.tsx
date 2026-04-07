@@ -116,7 +116,7 @@ const AffiliateApply = () => {
           </div>
           <h1 className="text-4xl font-bold text-primary mb-4">Affiliate Programme</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Earn <span className="text-accent font-bold">30% recurring commission</span> for every student you refer. 
+            Earn <span className="text-accent font-bold">50% recurring commission</span> for every student you refer. 
             Paid directly to your bank account via Stripe every month.
           </p>
         </div>
