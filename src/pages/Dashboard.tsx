@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { MANAGER_ADDONS } from "@/lib/subscription-tiers";
 import { Progress } from "@/components/ui/progress";
 import UsageHistoryChart from "@/components/dashboard/UsageHistoryChart";
+import WordUsageCard from "@/components/dashboard/WordUsageCard";
 import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious, PaginationEllipsis,
