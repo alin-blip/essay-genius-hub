@@ -33,6 +33,7 @@ import TipTapEditor from "@/components/editor/TipTapEditor";
 import AiDetectionScore from "@/components/editor/AiDetectionScore";
 import ReferenceValidator from "@/components/editor/ReferenceValidator";
 import GenerationReport from "@/components/editor/GenerationReport";
+import SimilarityScore from "@/components/editor/SimilarityScore";
 
 const GRADE_LABELS: Record<string, string> = {
   pass: "Pass",
@@ -281,6 +282,7 @@ const AssignmentEditor = () => {
             )}
 
             <AiDetectionScore content={activeContent || ""} assignmentId={id!} />
+            <SimilarityScore content={activeContent || ""} assignmentId={id!} />
 
             <div className="flex-1" />
 
