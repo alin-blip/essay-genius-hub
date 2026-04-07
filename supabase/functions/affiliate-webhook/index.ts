@@ -103,6 +103,29 @@ serve(async (req) => {
       status: "completed",
     });
 
+    // Send email notification to affiliate
+    const affiliateEmail = affiliate.contact_email;
+    if (affiliateEmail) {
+      const commissionFormatted = (commission / 100).toFixed(2);
+      try {
+        await supabase.functions.invoke("send-transactional-email", {
+          body: {
+            templateName: "referral-upgraded",
+            recipientEmail: affiliateEmail,
+            idempotencyKey: `referral-upgraded-${referral.id}-${invoice.id}`,
+            templateData: {
+              affiliateName: affiliate.contact_name || undefined,
+              referralEmail: invoice.customer_email,
+              commissionAmount: commissionFormatted,
+            },
+          },
+        });
+        console.log(`[affiliate-webhook] Notification email queued for ${affiliateEmail}`);
+      } catch (emailErr) {
+        console.error("[affiliate-webhook] Failed to queue notification email:", emailErr);
+      }
+    }
+
     console.log(`[affiliate-webhook] Paid ${commission} to affiliate ${affiliate.id}`);
     return new Response(JSON.stringify({ received: true, commission }), { status: 200 });
   } catch (error) {
