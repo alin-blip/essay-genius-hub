@@ -66,6 +66,9 @@ export type Database = {
         Row: {
           affiliate_code: string
           commission_rate: number
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
           created_at: string
           id: string
           reason: string | null
@@ -79,6 +82,9 @@ export type Database = {
         Insert: {
           affiliate_code: string
           commission_rate?: number
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           id?: string
           reason?: string | null
@@ -92,6 +98,9 @@ export type Database = {
         Update: {
           affiliate_code?: string
           commission_rate?: number
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
           created_at?: string
           id?: string
           reason?: string | null
@@ -373,6 +382,10 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      is_affiliate_of_user: {
+        Args: { _affiliate_user_id: string; _referred_user_id: string }
+        Returns: boolean
       }
       move_to_dlq: {
         Args: {
