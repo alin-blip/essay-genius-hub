@@ -356,6 +356,13 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* Word Usage Card */}
+        <WordUsageCard
+          creditsBalance={profile?.credits_balance ?? 0}
+          totalWords={subscription.planTier?.wordsPerMonth ?? null}
+          assignments={assignments}
+        />
+
         {/* Usage History Chart */}
         <UsageHistoryChart assignments={allAssignments as Tables<"assignments">[]} />
 
