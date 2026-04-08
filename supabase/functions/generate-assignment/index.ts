@@ -474,7 +474,7 @@ The JSON must have exactly these fields:
           },
           body: JSON.stringify({
             model: "openai/gpt-5",
-            temperature: 1.1,
+            temperature: 1,
             messages: [
               {
                 role: "system",
