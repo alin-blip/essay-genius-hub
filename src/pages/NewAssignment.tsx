@@ -139,8 +139,22 @@ const NewAssignment = () => {
       return;
     }
 
-    if (creditsAvailable < creditCost) {
-      toast({ title: "Insufficient credits", description: "Please upgrade your plan or buy more credits.", variant: "destructive" });
+    // Re-fetch credits right before generating to avoid stale data
+    const { data: freshProfile } = await supabase
+      .from("profiles")
+      .select("credits_balance")
+      .eq("user_id", user.id)
+      .single();
+
+    const currentCredits = freshProfile?.credits_balance ?? creditsAvailable;
+    setCreditsAvailable(currentCredits);
+
+    if (currentCredits < creditCost) {
+      toast({
+        title: "Insufficient credits",
+        description: `You need ${creditCost.toLocaleString()} credits but only have ${currentCredits.toLocaleString()}. Please upgrade your plan.`,
+        variant: "destructive",
+      });
       return;
     }
 
@@ -162,7 +176,20 @@ const NewAssignment = () => {
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Try to extract specific error message from edge function response
+        const errorMsg = data?.error || error.message || "Generation failed";
+        if (errorMsg.toLowerCase().includes("insufficient credits")) {
+          toast({
+            title: "Insufficient credits",
+            description: `You need ${creditCost.toLocaleString()} credits but only have ${currentCredits.toLocaleString()}. Please upgrade your plan.`,
+            variant: "destructive",
+          });
+        } else {
+          throw new Error(errorMsg);
+        }
+        return;
+      }
 
       if (data?.error) {
         throw new Error(data.error);
