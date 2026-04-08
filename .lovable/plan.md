@@ -1,26 +1,27 @@
 
 
-## Diagnostic: Eroarea NU este de credite
+## Diagnostic: Eroare la auto-humanizare (nu la generare)
 
-### Cauza reală
-Logurile Edge Function arată clar eroarea:
+### Ce s-a întâmplat
+Utilizatoarea a generat un assignment Distinction. Generarea principală a **funcționat** (scorul AI a fost 90%). Dar în pasul următor — **auto-humanizarea** — sistemul a trimis din nou `temperature: 1.1` la modelul `openai/gpt-5`, care acceptă doar `temperature: 1`.
+
+Logurile confirmă:
 ```
-"Unsupported value: 'temperature' does not support 1.1 with this model. Only the default (1) value is supported."
+Pass 1: AI score 90% > 40% — humanizing...
+Humanize pass 1 failed with status 400
+Http: connection closed before message completed
 ```
 
-Pe linia 281 din `generate-assignment/index.ts`, parametrul `temperature: 1.1` este trimis la modelul `openai/gpt-5`, care acceptă doar `temperature: 1`. Cererea AI eșuează cu status 400, iar frontend-ul afișează o eroare generică.
+Am corectat `temperature` la linia 281 (generarea principală), dar am ratat **linia 477** — aceeași valoare invalidă `1.1` în bucla de auto-humanizare.
 
-**Utilizatoarea avea 1,500 credite și a cerut 1,500 cuvinte — creditele erau suficiente.** Nu s-a consumat niciun credit deoarece generarea a eșuat înainte de a ajunge la deducere.
+### Credite
+Balanța actuală: **3,500 credite** (din 6,500 inițiale). Deci bonusul de 5,000 a fost aplicat, iar generarea anterioară a consumat credite. Creditele sunt OK.
 
-### De asemenea: bonusul de 5,000 credite
-Bonusul nu a fost aplicat — utilizatoarea încă are 1,500 credite. Trebuie aplicat din nou.
+### Fix necesar
 
-### Plan de fix
+| Fișier | Linia | Schimbare |
+|--------|-------|-----------|
+| `supabase/functions/generate-assignment/index.ts` | 477 | `temperature: 1.1` → `temperature: 1` |
 
-| Fișier | Schimbare |
-|--------|-----------|
-| `supabase/functions/generate-assignment/index.ts` | Schimbă `temperature: 1.1` → `temperature: 1` (linia 281) |
-| Database | Aplică bonusul de 5,000 credite pentru `dumitru.florentina82@yahoo.com` (1,500 → 6,500) |
-
-Ambele fix-uri sunt simple și directe — un singur caracter în cod și un UPDATE în baza de date.
+Un singur caracter de schimbat. După deploy, auto-humanizarea va funcționa și assignment-urile Distinction nu vor mai eșua.
 
