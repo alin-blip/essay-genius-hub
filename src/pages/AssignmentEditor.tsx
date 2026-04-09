@@ -72,6 +72,7 @@ const AssignmentEditor = () => {
   const [deepHumanizing, setDeepHumanizing] = useState(false);
   const [deepHumanizePass, setDeepHumanizePass] = useState(0);
   const [deepHumanizePasses, setDeepHumanizePasses] = useState<PassResult[]>([]);
+  const [showDeepConfirm, setShowDeepConfirm] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopAutoHumanizeRef = useRef(false);
