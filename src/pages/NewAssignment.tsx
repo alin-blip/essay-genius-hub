@@ -19,6 +19,10 @@ import {
   CreditCard,
   AlertTriangle,
   Crown,
+  Upload,
+  FileText,
+  X,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -72,10 +76,13 @@ const NewAssignment = () => {
   const [progressMessage, setProgressMessage] = useState(PROGRESS_MESSAGES[0]);
   const [creditsAvailable, setCreditsAvailable] = useState(5000);
   const [monthlyCount, setMonthlyCount] = useState(0);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [extracting, setExtracting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, subscription } = useAuth();
   const progressInterval = useRef<ReturnType<typeof setInterval>>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const monthlyLimit = subscription.planTier?.assignmentsPerMonth ?? null;
   const isAtLimit = monthlyLimit !== null && monthlyCount >= monthlyLimit;
@@ -125,6 +132,61 @@ const NewAssignment = () => {
   }, [generating]);
 
   const creditCost = wordCount[0];
+
+  const handleFileUpload = async (file: File) => {
+    if (!user) return;
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/msword",
+      "text/plain",
+      "image/png",
+      "image/jpeg",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Unsupported file type", description: "Please upload a PDF, DOCX, DOC, TXT, PNG, or JPG file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 20MB.", variant: "destructive" });
+      return;
+    }
+
+    setExtracting(true);
+    setUploadedFile(file);
+
+    try {
+      // Upload to storage
+      const filePath = `${user.id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("assignment-briefs")
+        .upload(filePath, file);
+
+      if (uploadError) throw new Error("Upload failed: " + uploadError.message);
+
+      // Call extraction edge function
+      const { data, error } = await supabase.functions.invoke("extract-brief", {
+        body: { file_path: filePath },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.extracted_text) {
+        setBrief(data.extracted_text);
+        toast({ title: "Brief extracted! ✨", description: "Text has been extracted from your file. Review and edit if needed." });
+      } else {
+        throw new Error("No text could be extracted");
+      }
+    } catch (err: any) {
+      console.error("File extraction error:", err);
+      toast({ title: "Extraction failed", description: err.message || "Could not extract text. Please paste manually.", variant: "destructive" });
+      setUploadedFile(null);
+    } finally {
+      setExtracting(false);
+    }
+  };
 
   const canProceed = () => {
     if (step === 1) return !!moduleName && !!title;
@@ -391,8 +453,80 @@ const NewAssignment = () => {
 
             {step === 3 && (
               <>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>Assignment Brief</Label>
+
+                  {/* File Upload Area */}
+                  <div
+                    className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                      uploadedFile ? "border-accent/50 bg-accent/5" : "border-border hover:border-accent/40 hover:bg-accent/5"
+                    }`}
+                    onClick={() => !extracting && fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleFileUpload(file);
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                    />
+                    {extracting ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="h-8 w-8 text-accent animate-spin" />
+                        <p className="text-sm font-medium text-foreground">Extracting text from your file...</p>
+                        <p className="text-xs text-muted-foreground">AI is reading and extracting all content</p>
+                      </div>
+                    ) : uploadedFile ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <FileText className="h-6 w-6 text-accent" />
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-foreground">{uploadedFile.name}</p>
+                          <p className="text-xs text-muted-foreground">Text extracted successfully · You can edit below</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedFile(null);
+                            setBrief("");
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-sm font-medium text-foreground">Upload Assignment Brief</p>
+                        <p className="text-xs text-muted-foreground">
+                          Drag & drop or click · PDF, DOCX, DOC, TXT, PNG, JPG
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">or paste manually</span>
+                    </div>
+                  </div>
+
                   <Textarea placeholder="Paste your full assignment brief here..." value={brief} onChange={(e) => setBrief(e.target.value)} className="min-h-[200px]" />
                   <p className="text-xs text-muted-foreground">{brief.length} characters · Minimum 20 required</p>
                 </div>
