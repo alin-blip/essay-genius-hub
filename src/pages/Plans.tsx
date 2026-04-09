@@ -192,7 +192,7 @@ const Plans = () => {
         </div>
 
         {/* Manager Add-ons */}
-        <div className="space-y-4">
+        <div id="manager" className="space-y-4 scroll-mt-20">
           <div className="text-center">
             <h2 className="text-xl font-bold text-foreground flex items-center justify-center gap-2">
               <Sparkles className="h-5 w-5 text-accent" />
