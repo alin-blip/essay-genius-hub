@@ -1,11 +1,51 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { ZipReader, BlobReader, TextWriter } from "https://deno.land/x/zipjs@v2.7.32/index.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+/**
+ * Extract plain text from a DOCX file (which is a ZIP containing XML).
+ * Reads word/document.xml and strips XML tags to get the text content.
+ */
+async function extractTextFromDocx(blob: Blob): Promise<string> {
+  const reader = new ZipReader(new BlobReader(blob));
+  const entries = await reader.getEntries();
+
+  const docEntry = entries.find((e: any) => e.filename === "word/document.xml");
+  if (!docEntry) {
+    await reader.close();
+    throw new Error("Invalid DOCX: word/document.xml not found");
+  }
+
+  const xmlText = await docEntry.getData!(new TextWriter());
+  await reader.close();
+
+  // Parse XML to extract text content from <w:t> tags, preserving paragraphs
+  const paragraphs: string[] = [];
+  // Split by paragraph tags <w:p ...>...</w:p>
+  const pRegex = /<w:p[\s>][\s\S]*?<\/w:p>/g;
+  let pMatch;
+  while ((pMatch = pRegex.exec(xmlText)) !== null) {
+    const pContent = pMatch[0];
+    // Extract all <w:t ...>text</w:t> within this paragraph
+    const tRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
+    let tMatch;
+    let paraText = "";
+    while ((tMatch = tRegex.exec(pContent)) !== null) {
+      paraText += tMatch[1];
+    }
+    if (paraText.trim()) {
+      paragraphs.push(paraText.trim());
+    }
+  }
+
+  return paragraphs.join("\n\n");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -53,10 +93,12 @@ serve(async (req) => {
     let contentForAI = "";
 
     if (fileType === "txt") {
-      // Plain text — read directly
       contentForAI = await fileData.text();
-    } else if (["pdf", "docx", "doc", "png", "jpg", "jpeg"].includes(fileType)) {
-      // For binary files, convert to base64 and use vision/multimodal AI
+    } else if (fileType === "docx") {
+      // Parse DOCX directly — it's a ZIP with XML inside
+      contentForAI = await extractTextFromDocx(fileData);
+    } else if (["pdf", "png", "jpg", "jpeg"].includes(fileType)) {
+      // For PDF and images, use Gemini multimodal
       const arrayBuffer = await fileData.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
       let binary = "";
@@ -65,18 +107,14 @@ serve(async (req) => {
       }
       const base64Content = btoa(binary);
 
-      // Determine MIME type
       const mimeMap: Record<string, string> = {
         pdf: "application/pdf",
-        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        doc: "application/msword",
         png: "image/png",
         jpg: "image/jpeg",
         jpeg: "image/jpeg",
       };
       const mimeType = mimeMap[fileType] || "application/octet-stream";
 
-      // Use Gemini multimodal to extract text from the document
       const extractionResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
