@@ -281,6 +281,70 @@ const AssignmentEditor = () => {
     stopAutoHumanizeRef.current = true;
   }, []);
 
+  const handleDeepHumanize = async () => {
+    if (!id || !activeContent) return;
+    setDeepHumanizing(true);
+    setDeepHumanizePass(1);
+    setDeepHumanizePasses([]);
+    stopDeepHumanizeRef.current = false;
+
+    try {
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      if (!accessToken) throw new Error("Not authenticated");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/targeted-humanize`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ content: activeContent, assignment_id: id }),
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error || "Deep humanize failed");
+
+      setDeepHumanizePasses(data.passes || []);
+      setDeepHumanizePass(data.passes?.length || MAX_PASSES);
+
+      setAssignment((prev) =>
+        prev ? { ...prev, humanized_content: data.humanized_content } : prev
+      );
+      setShowHumanized(true);
+      setEditedContent(null);
+      setHasChanges(false);
+
+      toast({
+        title: data.final_score != null && data.final_score <= 15
+          ? "Deep Humanize Complete! ✨"
+          : `Deep Humanize Done (Score: ${data.final_score ?? "?"}%)`,
+        description: `${data.credits_used} credits used. ${data.credits_remaining} remaining.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Deep Humanize Failed",
+        description: err.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeepHumanizing(false);
+    }
+  };
+
+  const handleStopDeepHumanize = useCallback(() => {
+    stopDeepHumanizeRef.current = true;
+  }, []);
+
 
   const handleExportTxt = () => {
     if (!activeContent || !assignment) return;
