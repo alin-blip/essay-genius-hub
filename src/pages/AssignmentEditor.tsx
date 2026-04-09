@@ -406,22 +406,34 @@ const AssignmentEditor = () => {
         <Card>
           <CardContent className="p-3 flex flex-wrap items-center gap-2">
             {assignment.humanized_content ? (
-              <div className="flex items-center gap-1 border rounded-lg p-1">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 border rounded-lg p-1">
+                  <Button
+                    variant={!showHumanized ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleVersionSwitch(false)}
+                    className="text-xs h-7"
+                  >
+                    Original
+                  </Button>
+                  <Button
+                    variant={showHumanized ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleVersionSwitch(true)}
+                    className="text-xs h-7"
+                  >
+                    Humanized
+                  </Button>
+                </div>
                 <Button
-                  variant={!showHumanized ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => handleVersionSwitch(false)}
-                  className="text-xs h-7"
+                  onClick={() => setShowDeepConfirm(true)}
+                  disabled={deepHumanizing}
+                  variant="outline"
+                  className="border-green-500/50 text-green-600 hover:bg-green-500 hover:text-white"
                 >
-                  Original
-                </Button>
-                <Button
-                  variant={showHumanized ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => handleVersionSwitch(true)}
-                  className="text-xs h-7"
-                >
-                  Humanized
+                  <Zap className="h-4 w-4 mr-1" />
+                  {deepHumanizing ? "Running..." : "Deep Humanize"}
                 </Button>
               </div>
             ) : (
