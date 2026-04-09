@@ -19,6 +19,10 @@ import {
   CreditCard,
   AlertTriangle,
   Crown,
+  Upload,
+  FileText,
+  X,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
