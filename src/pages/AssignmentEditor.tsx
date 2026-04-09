@@ -465,7 +465,7 @@ const AssignmentEditor = () => {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={autoHumanizeStopRef}
+                  onClick={handleStopAutoHumanize}
                   className="h-7 text-xs text-muted-foreground hover:text-destructive"
                 >
                   <Square className="h-3 w-3 mr-1" />
