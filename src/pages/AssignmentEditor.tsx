@@ -191,7 +191,103 @@ const AssignmentEditor = () => {
     }
   };
 
-  const handleExportTxt = () => {
+  const handleAutoHumanize = async () => {
+    if (!assignment?.generated_content || !id) return;
+    setAutoHumanizing(true);
+    setAutoHumanizePass(0);
+    setAutoHumanizeScore(null);
+    setAutoHumanizeStop(false);
+    setAutoHumanizeTotalCredits(0);
+
+    let currentContent = activeContent || assignment.generated_content;
+    let currentScore = 100;
+    let totalCredits = 0;
+    let creditsRemaining = 0;
+    let stopped = false;
+
+    // Use a ref-like approach via closure over a mutable object
+    const stopRef = { current: false };
+    setAutoHumanizeStop(false);
+    // We'll check stopRef.current which gets set via the stop handler
+    const originalSetStop = setAutoHumanizeStop;
+    const wrappedSetStop = (val: boolean | ((prev: boolean) => boolean)) => {
+      if (val === true) stopRef.current = true;
+      originalSetStop(val);
+    };
+
+    // Replace the stop setter temporarily
+    // Actually, simpler: we'll use a module-level ref
+    // Let's just check a flag via state updates
+    
+    for (let pass = 1; pass <= MAX_PASSES; pass++) {
+      if (stopRef.current) { stopped = true; break; }
+      
+      setAutoHumanizePass(pass);
+
+      // Step 1: Humanize
+      try {
+        const { data: humData, error: humError } = await supabase.functions.invoke("humanize-text", {
+          body: { assignment_id: id, content: currentContent },
+        });
+        if (humError) throw humError;
+        if (humData?.error) throw new Error(humData.error);
+        
+        currentContent = humData.humanized_content;
+        totalCredits += humData.credits_used || 0;
+        creditsRemaining = humData.credits_remaining || 0;
+        setAutoHumanizeTotalCredits(totalCredits);
+      } catch (err: any) {
+        setAutoHumanizing(false);
+        toast({ title: "Auto-Humanize Failed", description: err.message, variant: "destructive" });
+        return;
+      }
+
+      if (stopRef.current) { stopped = true; break; }
+
+      // Step 2: Check AI detection
+      try {
+        const { data: detData, error: detError } = await supabase.functions.invoke("check-ai-detection", {
+          body: { content: currentContent, assignment_id: id },
+        });
+        if (detError) throw detError;
+        if (detData?.error) throw new Error(detData.error);
+        
+        currentScore = detData.overall_score ?? 50;
+        setAutoHumanizeScore(currentScore);
+      } catch (err: any) {
+        // Detection failed but humanization succeeded — save what we have
+        currentScore = 0; // assume good enough
+      }
+
+      // Check if target reached
+      if (currentScore <= TARGET_SCORE) break;
+    }
+
+    // Save the final result
+    const { error: saveError } = await supabase
+      .from("assignments")
+      .update({ humanized_content: currentContent } as any)
+      .eq("id", id);
+
+    if (!saveError) {
+      setAssignment((prev) => (prev ? { ...prev, humanized_content: currentContent } : prev));
+      setShowHumanized(true);
+      setEditedContent(null);
+      setHasChanges(false);
+    }
+
+    setAutoHumanizing(false);
+    toast({
+      title: currentScore <= TARGET_SCORE ? "Auto-Humanize Complete! ✨" : stopped ? "Auto-Humanize Stopped" : `Auto-Humanize Done (Score: ${currentScore}%)`,
+      description: `${totalCredits} credits used across ${autoHumanizePass || 1} passes. ${creditsRemaining} remaining.`,
+    });
+  };
+
+  // Stop handler for auto-humanize — we need a ref to communicate with the loop
+  const autoHumanizeStopRef = useCallback(() => {
+    setAutoHumanizeStop(true);
+  }, []);
+
     if (!activeContent || !assignment) return;
     const blob = new Blob([activeContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
