@@ -18,6 +18,8 @@ import {
   LetterText,
   FileType,
   Save,
+  Bot,
+  Square,
 } from "lucide-react";
 import {
   DropdownMenu,
