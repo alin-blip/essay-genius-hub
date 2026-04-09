@@ -266,6 +266,54 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_logs: {
+        Row: {
+          actual_word_count: number | null
+          ai_provider_status: number | null
+          assignment_id: string | null
+          created_at: string
+          credits_after: number | null
+          credits_before: number
+          credits_charged: number | null
+          error_message: string | null
+          failure_step: string | null
+          id: string
+          metadata: Json | null
+          requested_word_count: number
+          user_id: string
+        }
+        Insert: {
+          actual_word_count?: number | null
+          ai_provider_status?: number | null
+          assignment_id?: string | null
+          created_at?: string
+          credits_after?: number | null
+          credits_before: number
+          credits_charged?: number | null
+          error_message?: string | null
+          failure_step?: string | null
+          id?: string
+          metadata?: Json | null
+          requested_word_count: number
+          user_id: string
+        }
+        Update: {
+          actual_word_count?: number | null
+          ai_provider_status?: number | null
+          assignment_id?: string | null
+          created_at?: string
+          credits_after?: number | null
+          credits_before?: number
+          credits_charged?: number | null
+          error_message?: string | null
+          failure_step?: string | null
+          id?: string
+          metadata?: Json | null
+          requested_word_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_type: string
@@ -375,6 +423,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      deduct_credits: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: number
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
