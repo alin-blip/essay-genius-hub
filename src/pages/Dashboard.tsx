@@ -220,23 +220,8 @@ const Dashboard = () => {
   const isSubscribed = subscription.subscribed;
 
   return (
-    <div className="min-h-screen bg-secondary/20">
-      <nav className="border-b bg-background sticky top-0 z-50">
-        <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-7 w-7 text-accent" />
-            <span className="text-lg font-bold text-primary">AssignmentPro</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/settings"><Settings className="h-4 w-4 mr-1" /> Settings</Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-1" /> Logout
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <DashboardLayout>
+    <div className="bg-secondary/20 min-h-full">
 
       <div className="container py-8 space-y-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
