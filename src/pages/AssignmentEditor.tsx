@@ -376,6 +376,9 @@ const AssignmentEditor = () => {
             )}
 
             <AiDetectionScore content={activeContent || ""} assignmentId={id!} />
+            <p className="text-xs text-muted-foreground italic px-1">
+              AI score is estimated — always check with your university's tools before submitting.
+            </p>
             <SimilarityScore content={activeContent || ""} assignmentId={id!} />
 
             <div className="flex-1" />
