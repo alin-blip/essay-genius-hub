@@ -365,7 +365,7 @@ const AssignmentEditor = () => {
         <ReferenceValidator references={assignment.references_list} assignmentId={id!} />
       </div>
     </div>
-  );
+    </DashboardLayout>
 };
 
 export default AssignmentEditor;

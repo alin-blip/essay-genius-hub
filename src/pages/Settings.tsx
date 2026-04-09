@@ -291,7 +291,7 @@ const Settings = () => {
         </Card>
       </div>
     </div>
-  );
+    </DashboardLayout>
 };
 
 export default Settings;
