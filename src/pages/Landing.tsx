@@ -279,8 +279,6 @@ const Landing = () => {
         <Testimonials />
       </div>
 
-      {/* Pricing */}
-      <PricingSection />
 
       {/* FAQ */}
       <section id="faq" className="py-20 md:py-28 bg-secondary/30">
