@@ -5,6 +5,7 @@ import {
   Crown,
   Settings,
   LogOut,
+  FolderOpen,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -27,6 +28,7 @@ import { GraduationCap } from "lucide-react";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Library", url: "/library", icon: FolderOpen },
   { title: "New Assignment", url: "/new-assignment", icon: PlusCircle },
   { title: "Plans & Upgrade", url: "/plans", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
