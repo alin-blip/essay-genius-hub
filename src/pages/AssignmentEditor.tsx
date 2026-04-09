@@ -288,6 +288,7 @@ const AssignmentEditor = () => {
     setAutoHumanizeStop(true);
   }, []);
 
+  const handleExportTxt = () => {
     if (!activeContent || !assignment) return;
     const blob = new Blob([activeContent], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
