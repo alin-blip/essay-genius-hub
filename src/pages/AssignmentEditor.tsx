@@ -366,6 +366,7 @@ const AssignmentEditor = () => {
       </div>
     </div>
     </DashboardLayout>
+  );
 };
 
 export default AssignmentEditor;

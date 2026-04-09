@@ -471,6 +471,7 @@ const NewAssignment = () => {
       </div>
     </div>
     </DashboardLayout>
+  );
 };
 
 export default NewAssignment;

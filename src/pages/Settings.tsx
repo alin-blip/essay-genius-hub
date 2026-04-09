@@ -292,6 +292,7 @@ const Settings = () => {
       </div>
     </div>
     </DashboardLayout>
+  );
 };
 
 export default Settings;

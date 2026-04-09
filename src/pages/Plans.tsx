@@ -278,6 +278,7 @@ const Plans = () => {
       </div>
     </div>
     </DashboardLayout>
+  );
 };
 
 export default Plans;
