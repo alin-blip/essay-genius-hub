@@ -65,13 +65,16 @@ const AssignmentEditor = () => {
   const [autoHumanizing, setAutoHumanizing] = useState(false);
   const [autoHumanizePass, setAutoHumanizePass] = useState(0);
   const [autoHumanizeScore, setAutoHumanizeScore] = useState<number | null>(null);
-  
   const [autoHumanizeTotalCredits, setAutoHumanizeTotalCredits] = useState(0);
   const [detectionSentences, setDetectionSentences] = useState<SentenceAnalysis[]>([]);
   const [showAiHighlights, setShowAiHighlights] = useState(false);
+  const [deepHumanizing, setDeepHumanizing] = useState(false);
+  const [deepHumanizePass, setDeepHumanizePass] = useState(0);
+  const [deepHumanizePasses, setDeepHumanizePasses] = useState<PassResult[]>([]);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopAutoHumanizeRef = useRef(false);
+  const stopDeepHumanizeRef = useRef(false);
 
   useEffect(() => {
     if (!user || !id) return;
