@@ -311,9 +311,13 @@ const NewAssignment = () => {
     } catch (err: any) {
       setGenerating(false);
       console.error("Generation error:", err);
+      const msg = err.message || "";
+      const isTimeout = msg.includes("Failed to send") || msg.includes("504") || msg.includes("TimeoutError") || msg.includes("network");
       toast({
-        title: "Generation Failed",
-        description: err.message || "Something went wrong. Please try again.",
+        title: isTimeout ? "Generation timed out" : "Generation Failed",
+        description: isTimeout
+          ? "The server took too long to respond. Please try again — shorter assignments are faster."
+          : msg || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     }
