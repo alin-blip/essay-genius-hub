@@ -156,7 +156,7 @@ export default function AssignmentsLibrary() {
   };
 
   const handleMoveAssignment = async (assignmentId: string, folderId: string | null) => {
-    const { error } = await supabase.from("assignments").update({ folder_id: folderId } as any).eq("id", assignmentId);
+    const { error } = await (supabase.from("assignments") as any).update({ folder_id: folderId }).eq("id", assignmentId);
     if (error) { toast.error("Failed to move assignment"); return; }
     toast.success("Assignment moved");
     setMovingAssignment(null);
