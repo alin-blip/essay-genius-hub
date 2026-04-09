@@ -24,7 +24,7 @@ import {
 import SocialProofStats from "@/components/landing/SocialProofStats";
 import Testimonials from "@/components/landing/Testimonials";
 import UniversityLogos from "@/components/landing/UniversityLogos";
-import PricingSection from "@/components/landing/PricingSection";
+
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 function RevealSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
