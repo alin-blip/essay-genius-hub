@@ -328,15 +328,43 @@ const NewAssignment = () => {
         navigate(`/assignment/${data.assignment_id}`);
       }, 1000);
     } catch (err: any) {
-      setGenerating(false);
       console.error("Generation error:", err);
       const msg = err.message || "";
       const isTimeout = err.name === "AbortError" || msg.includes("Failed to send") || msg.includes("504") || msg.includes("TimeoutError") || msg.includes("network") || msg.includes("aborted");
+      
+      // On timeout, check if the assignment was actually created server-side
+      if (isTimeout && user) {
+        try {
+          const { data: recentAssignment } = await supabase
+            .from("assignments")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("title", title)
+            .eq("status", "completed")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (recentAssignment) {
+            setGenerating(false);
+            toast({
+              title: "Assignment Generated! ✨",
+              description: "The generation took longer than expected but completed successfully.",
+            });
+            navigate(`/assignment/${recentAssignment.id}`);
+            return;
+          }
+        } catch (checkErr) {
+          console.error("Check for completed assignment failed:", checkErr);
+        }
+      }
+      
+      setGenerating(false);
       toast({
         title: isTimeout ? "Generation timed out" : "Generation Failed",
         description: isTimeout
-          ? "The server took too long to respond. Please try again — shorter assignments are faster."
-          : msg || "Something went wrong. Please try again.",
+          ? "The server took too long to respond. Your credits have not been charged. Please try again."
+          : msg || "Something went wrong. Credits have been refunded. Please try again.",
         variant: "destructive",
       });
     }
