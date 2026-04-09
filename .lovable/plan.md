@@ -1,49 +1,46 @@
 
 
-## Plan: Integrare GPTZero API ca detector AI real
+## GPTZero — funcționalități extra pe care le putem integra
 
-### Ce se schimbă
+GPTZero returnează deja date pe care nu le folosim. Iată ce putem adăuga:
 
-Înlocuim estimarea Gemini din `check-ai-detection` cu un apel real la **GPTZero API** (`POST https://api.gptzero.me/v2/predict/text`). GPTZero returnează:
-- `completely_generated_prob` (0-1) — probabilitatea ca textul e complet AI
-- `average_generated_prob` (0-1) — media per propoziție
-- `overall_burstiness` — scor burstiness (mic = mai AI)
-- `document_classification` — `HUMAN_ONLY`, `MIXED`, `AI_ONLY`
-- `sentences[]` — per-sentence `generated_prob` + `highlight_sentence_for_ai`
+### 1. Sentence-level AI highlighting în editor
+GPTZero returnează `sentences[]` cu `generated_prob` și `highlight_sentence_for_ai` per propoziție. Putem evidenția direct în TipTap editorul propozițiile marcate ca AI — roșu pentru prob > 0.7, galben pentru 0.4-0.7. Userul vede exact CE trebuie rescris, nu doar un scor global.
 
-### Pași
+### 2. Confidence level + clasificare detaliată
+GPTZero returnează `class_probabilities` (probabilitate pentru HUMAN_ONLY, MIXED, AI_ONLY) și `confidence_category` (high/medium/low). Putem afișa un badge de confidence — când e "high", userul știe că scorul e de încredere; când e "low", afișăm un warning.
 
-**1. Adăugare secret `GPTZERO_API_KEY`**
-- Userul trebuie să obțină un API key de la [gptzero.me/developers](https://gptzero.me/developers)
-- Îl salvăm ca secret în backend
+### 3. Sentence-level breakdown panel
+Un panou colapsabil care arată fiecare propoziție cu scorul ei individual — sortate de la cel mai AI la cel mai uman. Userul poate click pe o propoziție și editorul scrollează la ea.
 
-**2. Rescriere `supabase/functions/check-ai-detection/index.ts`**
-- Înlocuim apelul Gemini cu `POST https://api.gptzero.me/v2/predict/text`
-- Header: `x-api-key: ${GPTZERO_API_KEY}`
-- Body: `{ "document": content }`
-- Mapăm răspunsul:
-  - `overall_score` = `completely_generated_prob * 100` (scor AI %)
-  - `human_score` = `100 - overall_score`
-  - `details` = clasificarea + burstiness + confidence
-- Păstrăm aceeași structură de răspuns `{ overall_score, human_score, details }` — UI-ul nu se schimbă
+---
 
-**3. UI update mic în `AiDetectionScore.tsx`**
-- Adăugăm badge "Powered by GPTZero" pentru credibilitate
-- Eliminăm disclaimer-ul "estimated" — acum e un detector real
+### Plan tehnic
 
-### Ce NU se schimbă
-- Structura răspunsului edge function (same interface)
-- `AssignmentEditor.tsx` — auto-humanize loop funcționează identic
-- `humanize-text` — neatins
-- Credit logic — neatinsă
+**A. Edge function — returnează date extra** (`check-ai-detection/index.ts`)
+- Adăugăm în response: `sentences` (array cu text + generated_prob + highlight flag), `confidence_category`, `class_probabilities`
+- Structura răspunsului devine: `{ overall_score, human_score, details, confidence, sentences }`
+
+**B. UI — AiDetectionScore.tsx îmbunătățit**
+- Adăugăm confidence badge (High/Medium/Low) lângă scor
+- Adăugăm panou colapsabil "Sentence Analysis" cu lista de propoziții colorate pe baza scorului
+- Click pe propoziție → callback opțional pentru scroll în editor
+
+**C. TipTap highlighting** (`TipTapEditor.tsx`)
+- Adăugăm un prop `highlightedSentences` care primește array-ul de la GPTZero
+- Folosim extensia `Highlight` (deja instalată) pentru a marca propozițiile AI cu background roșu/galben
+- Buton toggle "Show AI highlights" care activează/dezactivează vizualizarea
+
+**D. Wiring în AssignmentEditor.tsx**
+- Pasăm `sentences` din rezultatul detection-ului către TipTapEditor
+- Adăugăm state pentru toggle highlights on/off
 
 ### Fișiere modificate
 
 | Fișier | Ce se schimbă |
 |--------|--------------|
-| `supabase/functions/check-ai-detection/index.ts` | Gemini → GPTZero API call |
-| `src/components/editor/AiDetectionScore.tsx` | Badge "Powered by GPTZero" |
-
-### Prerequisit
-Userul trebuie să-și facă cont pe gptzero.me și să obțină un API key (~$0.02/scan, plan de la $15/lună).
+| `supabase/functions/check-ai-detection/index.ts` | Returnează sentences + confidence extra |
+| `src/components/editor/AiDetectionScore.tsx` | Confidence badge + sentence breakdown panel |
+| `src/components/editor/TipTapEditor.tsx` | Highlight AI sentences în text |
+| `src/pages/AssignmentEditor.tsx` | Wire sentences data între componente |
 
