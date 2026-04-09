@@ -456,6 +456,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      restore_credits: {
+        Args: { p_amount: number; p_user_id: string }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
