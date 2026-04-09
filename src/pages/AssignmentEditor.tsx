@@ -626,6 +626,57 @@ const AssignmentEditor = () => {
         {/* Reference Validator */}
         <ReferenceValidator references={assignment.references_list} assignmentId={id!} />
       </div>
+
+      {/* Deep Humanize Confirmation Dialog */}
+      <Dialog open={showDeepConfirm} onOpenChange={setShowDeepConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-green-500" />
+              Deep Humanize
+            </DialogTitle>
+            <DialogDescription>
+              This will run up to {MAX_PASSES} passes of targeted sentence rewriting using AI detection feedback to minimize your AI score.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Estimated cost</span>
+              <span className="font-semibold text-foreground">
+                {Math.max(1, Math.ceil((assignment?.word_count || 3000) / 100))} credits
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Content</span>
+              <span className="text-foreground">
+                {showHumanized && assignment?.humanized_content ? "Humanized version" : "Original"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Target AI score</span>
+              <span className="text-foreground">≤ {TARGET_SCORE}%</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Only sentences flagged as AI-written will be rewritten. The rest stays unchanged.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowDeepConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowDeepConfirm(false);
+                handleDeepHumanize();
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Zap className="h-4 w-4 mr-1" />
+              Confirm & Run
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </DashboardLayout>
   );
