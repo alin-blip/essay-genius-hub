@@ -33,7 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { exportToDocx } from "@/lib/export-docx";
 import { exportToPdf } from "@/lib/export-pdf";
 import TipTapEditor from "@/components/editor/TipTapEditor";
-import AiDetectionScore from "@/components/editor/AiDetectionScore";
+import AiDetectionScore, { type DetectionResult, type SentenceAnalysis } from "@/components/editor/AiDetectionScore";
 import ReferenceValidator from "@/components/editor/ReferenceValidator";
 import GenerationReport from "@/components/editor/GenerationReport";
 import SimilarityScore from "@/components/editor/SimilarityScore";
@@ -65,6 +65,8 @@ const AssignmentEditor = () => {
   const [autoHumanizeScore, setAutoHumanizeScore] = useState<number | null>(null);
   
   const [autoHumanizeTotalCredits, setAutoHumanizeTotalCredits] = useState(0);
+  const [detectionSentences, setDetectionSentences] = useState<SentenceAnalysis[]>([]);
+  const [showAiHighlights, setShowAiHighlights] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopAutoHumanizeRef = useRef(false);
@@ -375,10 +377,16 @@ const AssignmentEditor = () => {
               </div>
             )}
 
-            <AiDetectionScore content={activeContent || ""} assignmentId={id!} />
-            <p className="text-xs text-muted-foreground italic px-1">
-              AI score is estimated — always check with your university's tools before submitting.
-            </p>
+            <AiDetectionScore
+              content={activeContent || ""}
+              assignmentId={id!}
+              onDetectionResult={(result) => {
+                setDetectionSentences(result.sentences || []);
+                if (result.sentences && result.sentences.length > 0) {
+                  setShowAiHighlights(true);
+                }
+              }}
+            />
             <SimilarityScore content={activeContent || ""} assignmentId={id!} />
 
             <div className="flex-1" />
@@ -501,6 +509,9 @@ const AssignmentEditor = () => {
               onUpdate={handleContentUpdate}
               onRegenerateSelection={handleRegenerateSelection}
               regenerating={regenerating}
+              highlightedSentences={detectionSentences}
+              showHighlights={showAiHighlights}
+              onToggleHighlights={() => setShowAiHighlights(prev => !prev)}
             />
           </CardContent>
         </Card>
