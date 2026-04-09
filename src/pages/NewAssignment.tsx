@@ -133,6 +133,61 @@ const NewAssignment = () => {
 
   const creditCost = wordCount[0];
 
+  const handleFileUpload = async (file: File) => {
+    if (!user) return;
+
+    const allowedTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/msword",
+      "text/plain",
+      "image/png",
+      "image/jpeg",
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      toast({ title: "Unsupported file type", description: "Please upload a PDF, DOCX, DOC, TXT, PNG, or JPG file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Maximum file size is 20MB.", variant: "destructive" });
+      return;
+    }
+
+    setExtracting(true);
+    setUploadedFile(file);
+
+    try {
+      // Upload to storage
+      const filePath = `${user.id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("assignment-briefs")
+        .upload(filePath, file);
+
+      if (uploadError) throw new Error("Upload failed: " + uploadError.message);
+
+      // Call extraction edge function
+      const { data, error } = await supabase.functions.invoke("extract-brief", {
+        body: { file_path: filePath },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.extracted_text) {
+        setBrief(data.extracted_text);
+        toast({ title: "Brief extracted! ✨", description: "Text has been extracted from your file. Review and edit if needed." });
+      } else {
+        throw new Error("No text could be extracted");
+      }
+    } catch (err: any) {
+      console.error("File extraction error:", err);
+      toast({ title: "Extraction failed", description: err.message || "Could not extract text. Please paste manually.", variant: "destructive" });
+      setUploadedFile(null);
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const canProceed = () => {
     if (step === 1) return !!moduleName && !!title;
     if (step === 2) return !!assignmentType && !!targetGrade;
