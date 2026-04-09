@@ -260,7 +260,7 @@ ${assignment_brief || "No specific brief provided. Write based on the title."}
 
 ${additional_instructions ? `**Additional Instructions:**\n${additional_instructions}` : ""}
 
-REMEMBER: You MUST write at least ${word_count} words. Write the full assignment now.`;
+REMEMBER: You MUST write approximately ${word_count} words (±5%). Not more, not less. Write the full assignment now.`;
 
     // Call Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
