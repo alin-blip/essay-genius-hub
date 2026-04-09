@@ -182,7 +182,7 @@ const Landing = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild className="bg-accent text-accent-foreground hover:bg-accent/90 text-base px-8">
                 <Link to="/signup">
-                  Start Your Assignment
+                  Start for Free — 1,500 Words Included
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
