@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { useEffect, useState } from "react";
 import { Tables } from "@/integrations/supabase/types";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
