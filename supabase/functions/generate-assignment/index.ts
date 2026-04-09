@@ -650,7 +650,7 @@ The JSON must have exactly these fields:
         assignment_id: assignment.id,
         content: generatedContent,
         credits_used: creditCost,
-        credits_remaining: profile.credits_balance - creditCost,
+        credits_remaining: newBalance ?? creditsBefore - creditCost,
         generation_report: generationMetadata,
       }),
       {

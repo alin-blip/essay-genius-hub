@@ -204,7 +204,7 @@ serve(async (req) => {
       JSON.stringify({
         humanized_content: humanizedContent,
         credits_used: creditCost,
-        credits_remaining: profile.credits_balance - creditCost,
+        credits_remaining: newBalance ?? profile.credits_balance - creditCost,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

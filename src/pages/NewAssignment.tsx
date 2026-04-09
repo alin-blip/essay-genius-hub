@@ -390,9 +390,9 @@ const NewAssignment = () => {
                     <Label>Word Count</Label>
                     <span className="text-sm font-medium text-accent">{wordCount[0].toLocaleString()} words</span>
                   </div>
-                  <Slider value={wordCount} onValueChange={setWordCount} min={500} max={15000} step={500} />
+                  <Slider value={wordCount} onValueChange={setWordCount} min={500} max={10000} step={500} />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>500</span><span>15,000</span>
+                    <span>500</span><span>10,000</span>
                   </div>
                 </div>
               </>
