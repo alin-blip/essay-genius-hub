@@ -447,7 +447,7 @@ const AssignmentEditor = () => {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={handleDeepHumanize}
+                  onClick={() => setShowDeepConfirm(true)}
                   disabled={humanizing || autoHumanizing || deepHumanizing}
                   variant="outline"
                   className="border-green-500/50 text-green-600 hover:bg-green-500 hover:text-white"
