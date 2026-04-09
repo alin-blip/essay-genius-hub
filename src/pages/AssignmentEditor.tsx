@@ -19,6 +19,7 @@ import {
   FileType,
   Save,
   Bot,
+  Zap,
   Square,
 } from "lucide-react";
 import {
@@ -37,6 +38,7 @@ import AiDetectionScore, { type DetectionResult, type SentenceAnalysis } from "@
 import ReferenceValidator from "@/components/editor/ReferenceValidator";
 import GenerationReport from "@/components/editor/GenerationReport";
 import SimilarityScore from "@/components/editor/SimilarityScore";
+import DeepHumanizeProgress, { type PassResult } from "@/components/editor/DeepHumanizeProgress";
 
 const GRADE_LABELS: Record<string, string> = {
   pass: "Pass",
@@ -63,13 +65,16 @@ const AssignmentEditor = () => {
   const [autoHumanizing, setAutoHumanizing] = useState(false);
   const [autoHumanizePass, setAutoHumanizePass] = useState(0);
   const [autoHumanizeScore, setAutoHumanizeScore] = useState<number | null>(null);
-  
   const [autoHumanizeTotalCredits, setAutoHumanizeTotalCredits] = useState(0);
   const [detectionSentences, setDetectionSentences] = useState<SentenceAnalysis[]>([]);
   const [showAiHighlights, setShowAiHighlights] = useState(false);
+  const [deepHumanizing, setDeepHumanizing] = useState(false);
+  const [deepHumanizePass, setDeepHumanizePass] = useState(0);
+  const [deepHumanizePasses, setDeepHumanizePasses] = useState<PassResult[]>([]);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopAutoHumanizeRef = useRef(false);
+  const stopDeepHumanizeRef = useRef(false);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -276,6 +281,70 @@ const AssignmentEditor = () => {
     stopAutoHumanizeRef.current = true;
   }, []);
 
+  const handleDeepHumanize = async () => {
+    if (!id || !activeContent) return;
+    setDeepHumanizing(true);
+    setDeepHumanizePass(1);
+    setDeepHumanizePasses([]);
+    stopDeepHumanizeRef.current = false;
+
+    try {
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      if (!accessToken) throw new Error("Not authenticated");
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/targeted-humanize`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ content: activeContent, assignment_id: id }),
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+      if (!response.ok || data.error) throw new Error(data.error || "Deep humanize failed");
+
+      setDeepHumanizePasses(data.passes || []);
+      setDeepHumanizePass(data.passes?.length || MAX_PASSES);
+
+      setAssignment((prev) =>
+        prev ? { ...prev, humanized_content: data.humanized_content } : prev
+      );
+      setShowHumanized(true);
+      setEditedContent(null);
+      setHasChanges(false);
+
+      toast({
+        title: data.final_score != null && data.final_score <= 15
+          ? "Deep Humanize Complete! ✨"
+          : `Deep Humanize Done (Score: ${data.final_score ?? "?"}%)`,
+        description: `${data.credits_used} credits used. ${data.credits_remaining} remaining.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Deep Humanize Failed",
+        description: err.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeepHumanizing(false);
+    }
+  };
+
+  const handleStopDeepHumanize = useCallback(() => {
+    stopDeepHumanizeRef.current = true;
+  }, []);
+
 
   const handleExportTxt = () => {
     if (!activeContent || !assignment) return;
@@ -358,7 +427,7 @@ const AssignmentEditor = () => {
                 <Button
                   size="sm"
                   onClick={handleHumanize}
-                  disabled={humanizing || autoHumanizing}
+                  disabled={humanizing || autoHumanizing || deepHumanizing}
                   className="bg-accent text-accent-foreground hover:bg-accent/90"
                 >
                   <Wand2 className="h-4 w-4 mr-1" />
@@ -367,12 +436,22 @@ const AssignmentEditor = () => {
                 <Button
                   size="sm"
                   onClick={handleAutoHumanize}
-                  disabled={humanizing || autoHumanizing}
+                  disabled={humanizing || autoHumanizing || deepHumanizing}
                   variant="outline"
                   className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
                 >
                   <Bot className="h-4 w-4 mr-1" />
                   Auto-Humanize
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleDeepHumanize}
+                  disabled={humanizing || autoHumanizing || deepHumanizing}
+                  variant="outline"
+                  className="border-green-500/50 text-green-600 hover:bg-green-500 hover:text-white"
+                >
+                  <Zap className="h-4 w-4 mr-1" />
+                  {deepHumanizing ? "Running..." : "Deep Humanize"}
                 </Button>
               </div>
             )}
@@ -499,6 +578,17 @@ const AssignmentEditor = () => {
               )}
             </CardContent>
           </Card>
+        )}
+
+        {/* Deep Humanize Progress */}
+        {(deepHumanizing || deepHumanizePasses.length > 0) && (
+          <DeepHumanizeProgress
+            currentPass={deepHumanizePass}
+            maxPasses={MAX_PASSES}
+            passes={deepHumanizePasses}
+            isRunning={deepHumanizing}
+            onStop={handleStopDeepHumanize}
+          />
         )}
 
         {/* Editor */}
