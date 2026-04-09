@@ -580,6 +580,17 @@ const AssignmentEditor = () => {
           </Card>
         )}
 
+        {/* Deep Humanize Progress */}
+        {(deepHumanizing || deepHumanizePasses.length > 0) && (
+          <DeepHumanizeProgress
+            currentPass={deepHumanizePass}
+            maxPasses={MAX_PASSES}
+            passes={deepHumanizePasses}
+            isRunning={deepHumanizing}
+            onStop={handleStopDeepHumanize}
+          />
+        )}
+
         {/* Editor */}
         <Card>
           <CardContent className="p-0">
