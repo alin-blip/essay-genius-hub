@@ -1,3 +1,4 @@
+import DashboardLayout from "@/components/DashboardLayout";
 import { useEffect, useState } from "react";
 import { Tables } from "@/integrations/supabase/types";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -5,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  GraduationCap, Plus, FileText, CreditCard, Award, TrendingUp,
-  Settings, LogOut, Trash2, Sparkles, Crown, AlertTriangle,
+  Plus, FileText, CreditCard, Award, TrendingUp,
+  Trash2, Sparkles, Crown, AlertTriangle,
   Search, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
@@ -219,23 +220,8 @@ const Dashboard = () => {
   const isSubscribed = subscription.subscribed;
 
   return (
-    <div className="min-h-screen bg-secondary/20">
-      <nav className="border-b bg-background sticky top-0 z-50">
-        <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-7 w-7 text-accent" />
-            <span className="text-lg font-bold text-primary">AssignmentPro</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/settings"><Settings className="h-4 w-4 mr-1" /> Settings</Link>
-            </Button>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="h-4 w-4 mr-1" /> Logout
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <DashboardLayout>
+    <div className="bg-secondary/20 min-h-full">
 
       <div className="container py-8 space-y-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -619,7 +605,11 @@ const Dashboard = () => {
                 )}
                 <CardContent className={`p-4 space-y-3 ${addon.highlighted ? "pt-8" : ""}`}>
                   <h4 className="font-semibold text-sm text-foreground">{addon.name}</h4>
-                  <p className="text-2xl font-bold text-primary">£{addon.priceGBP}<span className="text-xs font-normal text-muted-foreground">{addon.billing}</span></p>
+                  <p className="text-2xl font-bold text-primary">
+                    <span className="line-through text-muted-foreground text-sm mr-1">£{addon.priceGBP}</span>
+                    £{Math.round(addon.priceGBP / 2)}
+                    <span className="text-xs font-normal text-muted-foreground">{addon.billing}</span>
+                  </p>
                   <p className="text-xs text-muted-foreground">{addon.description}</p>
                   <Button
                     size="sm"
@@ -643,6 +633,7 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </DashboardLayout>
   );
 };
 

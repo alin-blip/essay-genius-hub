@@ -24,7 +24,7 @@ import {
 import SocialProofStats from "@/components/landing/SocialProofStats";
 import Testimonials from "@/components/landing/Testimonials";
 import UniversityLogos from "@/components/landing/UniversityLogos";
-import PricingSection from "@/components/landing/PricingSection";
+
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 
 function RevealSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -96,7 +96,6 @@ const Landing = () => {
     { href: "#features", label: "Features" },
     { href: "#how-it-works", label: "How It Works" },
     { href: "#testimonials", label: "Reviews" },
-    { href: "#pricing", label: "Pricing" },
     { href: "#faq", label: "FAQ" },
   ];
 
@@ -183,7 +182,7 @@ const Landing = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" asChild className="bg-accent text-accent-foreground hover:bg-accent/90 text-base px-8">
                 <Link to="/signup">
-                  Start Your Assignment
+                  Start for Free — 1,500 Words Included
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
@@ -280,8 +279,6 @@ const Landing = () => {
         <Testimonials />
       </div>
 
-      {/* Pricing */}
-      <PricingSection />
 
       {/* FAQ */}
       <section id="faq" className="py-20 md:py-28 bg-secondary/30">
@@ -316,11 +313,11 @@ const Landing = () => {
             Ready to Ace Your Assignments?
           </h2>
           <p className="text-primary-foreground/80 text-lg max-w-xl mx-auto">
-            Join 7,000+ students already using AssignmentPro. Start with 5,000 free words.
+            Join 7,000+ students already using AssignmentPro. Start with 1,500 free words.
           </p>
           <Button size="lg" asChild className="bg-accent text-accent-foreground hover:bg-accent/90 text-base px-10">
             <Link to="/signup">
-              Create Free Account
+              Start for Free
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
