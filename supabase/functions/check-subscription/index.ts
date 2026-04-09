@@ -107,12 +107,27 @@ serve(async (req) => {
       const category = TIER_CATEGORY[planProductId] || "student";
       logStep("Updating profile", { planProductId, credits, category, hasManagerAddon });
 
-      await supabaseClient.from("profiles").update({
-        credits_balance: credits,
+      // Only update plan metadata — NEVER reset credits_balance on refresh.
+      // Credits are set once at checkout/renewal via webhook, not here.
+      const { data: currentProfile } = await supabaseClient
+        .from("profiles")
+        .select("subscription_plan")
+        .eq("user_id", user.id)
+        .single();
+
+      const updatePayload: Record<string, any> = {
         subscription_plan: planProductId,
         account_type: category,
         has_manager_addon: hasManagerAddon,
-      }).eq("user_id", user.id);
+      };
+
+      // Only set credits_balance when the plan CHANGES (new subscription or upgrade)
+      if (!currentProfile || currentProfile.subscription_plan !== planProductId) {
+        updatePayload.credits_balance = credits;
+        logStep("Plan changed — resetting credits", { from: currentProfile?.subscription_plan, to: planProductId, credits });
+      }
+
+      await supabaseClient.from("profiles").update(updatePayload).eq("user_id", user.id);
     }
 
     return new Response(JSON.stringify({

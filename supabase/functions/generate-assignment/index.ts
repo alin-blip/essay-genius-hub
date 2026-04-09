@@ -155,9 +155,10 @@ serve(async (req) => {
 
     // Generate a unique session seed for uniqueness guarantee
     const sessionSeed = crypto.randomUUID() + "-" + Date.now();
+    const creditsBefore = profile.credits_balance;
 
-    // Build the system prompt — target 15% OVER requested word count to ensure minimum met
-    const targetWords = Math.ceil(word_count * 1.15);
+    // Build the system prompt — target word count with tight ±5% tolerance
+    const targetWords = word_count;
     const gradeInstruction = GRADE_INSTRUCTIONS[target_grade] || GRADE_INSTRUCTIONS.merit;
     const structureInstruction = TYPE_STRUCTURES[assignment_type] || TYPE_STRUCTURES.essay;
 
@@ -242,8 +243,8 @@ ${include_harvard_refs ? `Use Harvard referencing style throughout:
 ${include_case_studies ? `## Case Studies
 Include 2-3 real-world case studies or examples. Name specific companies, organisations, or events with approximate dates and outcomes. Integrate them naturally — don't just bolt them on.` : ""}
 
-## WORD COUNT — ABSOLUTE MINIMUM: ${word_count} WORDS
-You MUST write at least ${targetWords} words. This is a hard requirement. Count your output mentally as you write. If you feel yourself wrapping up too early, add more depth, another example, or expand your analysis. Do NOT write fewer than ${word_count} words under any circumstances. Err on the side of writing MORE rather than less.
+## WORD COUNT — EXACTLY ${word_count} WORDS (±5% tolerance)
+You MUST write approximately ${word_count} words. Your output must be between ${Math.floor(word_count * 0.95)} and ${Math.ceil(word_count * 1.05)} words. This is a hard requirement. Count your output carefully as you write. Do NOT write significantly more or less than ${word_count} words. If you find yourself going over, cut content. If under, add depth. The target is EXACTLY ${word_count} words.
 
 ## Output Format
 Write the complete assignment. Use markdown: ## for main sections, ### for subsections. Do NOT include title page, word count, or meta-commentary.`;
@@ -259,7 +260,7 @@ ${assignment_brief || "No specific brief provided. Write based on the title."}
 
 ${additional_instructions ? `**Additional Instructions:**\n${additional_instructions}` : ""}
 
-REMEMBER: You MUST write at least ${word_count} words. Write the full assignment now.`;
+REMEMBER: You MUST write approximately ${word_count} words (±5%). Not more, not less. Write the full assignment now.`;
 
     // Call Lovable AI
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -290,6 +291,19 @@ REMEMBER: You MUST write at least ${word_count} words. Write the full assignment
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
       
+      // Log the failure for audit
+      const serviceRoleKeyForLog = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const logClient = createClient(supabaseUrl, serviceRoleKeyForLog);
+      await logClient.from("generation_logs").insert({
+        user_id: user.id,
+        requested_word_count: word_count,
+        credits_before: creditsBefore,
+        ai_provider_status: aiResponse.status,
+        failure_step: "ai_generation",
+        error_message: errText.substring(0, 500),
+        metadata: { target_grade, assignment_type },
+      });
+      
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "AI service is busy. Please try again in a moment." }), {
           status: 429,
@@ -297,13 +311,13 @@ REMEMBER: You MUST write at least ${word_count} words. Write the full assignment
         });
       }
       if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI service credits exhausted. Please contact support." }), {
-          status: 402,
+        return new Response(JSON.stringify({ error: "Our AI service is temporarily unavailable. Please try again in a few minutes. No credits have been charged." }), {
+          status: 503,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       
-      return new Response(JSON.stringify({ error: "Failed to generate assignment" }), {
+      return new Response(JSON.stringify({ error: "Failed to generate assignment. Please try again. No credits have been charged." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -610,20 +624,33 @@ The JSON must have exactly these fields:
       });
     }
 
-    // Deduct credits using service role
+    // Deduct credits atomically using database function
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    await adminClient
-      .from("profiles")
-      .update({ credits_balance: profile.credits_balance - creditCost })
-      .eq("user_id", user.id);
+    const { data: newBalance } = await adminClient.rpc("deduct_credits", {
+      p_user_id: user.id,
+      p_amount: creditCost,
+    });
+
+    // Log the generation for audit trail
+    await adminClient.from("generation_logs").insert({
+      user_id: user.id,
+      assignment_id: assignment.id,
+      requested_word_count: word_count,
+      actual_word_count: actualWordCount,
+      credits_before: creditsBefore,
+      credits_after: newBalance ?? creditsBefore - creditCost,
+      credits_charged: creditCost,
+      ai_provider_status: 200,
+      metadata: { target_grade, assignment_type, humanize_passes: passCount },
+    });
 
     return new Response(
       JSON.stringify({
         assignment_id: assignment.id,
         content: generatedContent,
         credits_used: creditCost,
-        credits_remaining: profile.credits_balance - creditCost,
+        credits_remaining: newBalance ?? creditsBefore - creditCost,
         generation_report: generationMetadata,
       }),
       {

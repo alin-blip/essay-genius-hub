@@ -192,19 +192,19 @@ serve(async (req) => {
       });
     }
 
-    // Deduct credits
+    // Deduct credits atomically
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    await adminClient
-      .from("profiles")
-      .update({ credits_balance: profile.credits_balance - creditCost })
-      .eq("user_id", user.id);
+    const { data: newBalance } = await adminClient.rpc("deduct_credits", {
+      p_user_id: user.id,
+      p_amount: creditCost,
+    });
 
     return new Response(
       JSON.stringify({
         humanized_content: humanizedContent,
         credits_used: creditCost,
-        credits_remaining: profile.credits_balance - creditCost,
+        credits_remaining: newBalance ?? profile.credits_balance - creditCost,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
