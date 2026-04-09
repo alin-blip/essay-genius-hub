@@ -155,9 +155,10 @@ serve(async (req) => {
 
     // Generate a unique session seed for uniqueness guarantee
     const sessionSeed = crypto.randomUUID() + "-" + Date.now();
+    const creditsBefore = profile.credits_balance;
 
-    // Build the system prompt — target 15% OVER requested word count to ensure minimum met
-    const targetWords = Math.ceil(word_count * 1.15);
+    // Build the system prompt — target word count with tight ±5% tolerance
+    const targetWords = word_count;
     const gradeInstruction = GRADE_INSTRUCTIONS[target_grade] || GRADE_INSTRUCTIONS.merit;
     const structureInstruction = TYPE_STRUCTURES[assignment_type] || TYPE_STRUCTURES.essay;
 
