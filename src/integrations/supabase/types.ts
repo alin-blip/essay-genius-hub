@@ -119,6 +119,7 @@ export type Database = {
           assignment_brief: string | null
           assignment_type: string
           created_at: string
+          folder_id: string | null
           generated_content: string | null
           generation_metadata: Json | null
           humanized_content: string | null
@@ -140,6 +141,7 @@ export type Database = {
           assignment_brief?: string | null
           assignment_type?: string
           created_at?: string
+          folder_id?: string | null
           generated_content?: string | null
           generation_metadata?: Json | null
           humanized_content?: string | null
@@ -161,6 +163,7 @@ export type Database = {
           assignment_brief?: string | null
           assignment_type?: string
           created_at?: string
+          folder_id?: string | null
           generated_content?: string | null
           generation_metadata?: Json | null
           humanized_content?: string | null
@@ -177,7 +180,15 @@ export type Database = {
           user_id?: string
           word_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "assignments_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       email_send_log: {
         Row: {
@@ -265,6 +276,44 @@ export type Database = {
           used_at?: string | null
         }
         Relationships: []
+      }
+      folders: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          parent_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          parent_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       generation_logs: {
         Row: {
