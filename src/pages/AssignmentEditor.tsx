@@ -38,6 +38,7 @@ import AiDetectionScore, { type DetectionResult, type SentenceAnalysis } from "@
 import ReferenceValidator from "@/components/editor/ReferenceValidator";
 import GenerationReport from "@/components/editor/GenerationReport";
 import SimilarityScore from "@/components/editor/SimilarityScore";
+import DeepHumanizeProgress, { type PassResult } from "@/components/editor/DeepHumanizeProgress";
 
 const GRADE_LABELS: Record<string, string> = {
   pass: "Pass",
