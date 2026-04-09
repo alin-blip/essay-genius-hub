@@ -60,6 +60,13 @@ const AssignmentEditor = () => {
   const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [autoHumanizing, setAutoHumanizing] = useState(false);
+  const [autoHumanizePass, setAutoHumanizePass] = useState(0);
+  const [autoHumanizeScore, setAutoHumanizeScore] = useState<number | null>(null);
+  const [autoHumanizeStop, setAutoHumanizeStop] = useState(false);
+  const [autoHumanizeTotalCredits, setAutoHumanizeTotalCredits] = useState(0);
+  const MAX_PASSES = 5;
+  const TARGET_SCORE = 10;
 
   useEffect(() => {
     if (!user || !id) return;
