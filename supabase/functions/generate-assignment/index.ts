@@ -468,6 +468,21 @@ The JSON must have exactly these fields:
       similarity: similarityResult,
     };
 
+    // Deduct credits FIRST, then save — refund if save fails
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+    const { data: newBalance } = await adminClient.rpc("deduct_credits", {
+      p_user_id: user.id,
+      p_amount: creditCost,
+    });
+
+    if (newBalance === -1) {
+      return new Response(JSON.stringify({ error: "Insufficient credits" }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Save assignment to DB
     const { data: assignment, error: insertError } = await supabase
       .from("assignments")
@@ -493,19 +508,27 @@ The JSON must have exactly these fields:
 
     if (insertError) {
       console.error("Insert error:", insertError);
-      return new Response(JSON.stringify({ error: "Failed to save assignment" }), {
+      // REFUND credits since we failed to save the assignment
+      console.log(`Refunding ${creditCost} credits to user ${user.id} due to insert failure`);
+      await adminClient.rpc("restore_credits", { p_user_id: user.id, p_amount: creditCost });
+      
+      await adminClient.from("generation_logs").insert({
+        user_id: user.id,
+        requested_word_count: word_count,
+        credits_before: creditsBefore,
+        credits_after: creditsBefore, // refunded
+        credits_charged: 0,
+        ai_provider_status: 200,
+        failure_step: "db_insert",
+        error_message: insertError.message?.substring(0, 500),
+        metadata: { target_grade, assignment_type, refunded: true },
+      });
+
+      return new Response(JSON.stringify({ error: "Failed to save assignment. Credits have been refunded." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    // Deduct credits atomically using database function
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const { data: newBalance } = await adminClient.rpc("deduct_credits", {
-      p_user_id: user.id,
-      p_amount: creditCost,
-    });
 
     // Log the generation for audit trail
     await adminClient.from("generation_logs").insert({
@@ -535,8 +558,35 @@ The JSON must have exactly these fields:
     );
   } catch (error) {
     console.error("Edge function error:", error);
+    // Attempt to refund credits on unexpected errors
+    try {
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+      const adminClient = createClient(supabaseUrl, serviceRoleKey);
+      
+      // Try to get user from auth header for refund
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader) {
+        const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const userClient = createClient(supabaseUrl, supabaseKey, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: { user } } = await userClient.auth.getUser();
+        if (user) {
+          const body = await req.clone().json().catch(() => null);
+          const wc = body?.word_count;
+          if (wc && typeof wc === "number") {
+            console.log(`Refunding ${wc} credits to user ${user.id} due to unexpected error`);
+            await adminClient.rpc("restore_credits", { p_user_id: user.id, p_amount: wc });
+          }
+        }
+      }
+    } catch (refundErr) {
+      console.error("Refund attempt failed:", refundErr);
+    }
+    
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "Generation failed. Credits have been refunded. Please try again." }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
