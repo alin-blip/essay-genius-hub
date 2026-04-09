@@ -61,18 +61,8 @@ const Plans = () => {
   };
 
   return (
-    <div className="min-h-screen bg-secondary/20">
-      <nav className="border-b bg-background sticky top-0 z-50">
-        <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-7 w-7 text-accent" />
-            <span className="text-lg font-bold text-primary">AssignmentPro</span>
-          </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-1" /> Dashboard</Link>
-          </Button>
-        </div>
-      </nav>
+    <DashboardLayout>
+    <div className="bg-secondary/20 min-h-full">
 
       <div className="container py-8 max-w-6xl space-y-8">
         <div className="text-center space-y-2">
