@@ -624,13 +624,26 @@ The JSON must have exactly these fields:
       });
     }
 
-    // Deduct credits using service role
+    // Deduct credits atomically using database function
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    await adminClient
-      .from("profiles")
-      .update({ credits_balance: profile.credits_balance - creditCost })
-      .eq("user_id", user.id);
+    const { data: newBalance } = await adminClient.rpc("deduct_credits", {
+      p_user_id: user.id,
+      p_amount: creditCost,
+    });
+
+    // Log the generation for audit trail
+    await adminClient.from("generation_logs").insert({
+      user_id: user.id,
+      assignment_id: assignment.id,
+      requested_word_count: word_count,
+      actual_word_count: actualWordCount,
+      credits_before: creditsBefore,
+      credits_after: newBalance ?? creditsBefore - creditCost,
+      credits_charged: creditCost,
+      ai_provider_status: 200,
+      metadata: { target_grade, assignment_type, humanize_passes: passCount },
+    });
 
     return new Response(
       JSON.stringify({
