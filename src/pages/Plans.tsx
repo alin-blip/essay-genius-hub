@@ -18,8 +18,17 @@ import {
 const Plans = () => {
   const { subscription, refreshSubscription } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [category, setCategory] = useState<"student" | "agent">("student");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location.hash === "#manager") {
+      setTimeout(() => {
+        document.getElementById("manager")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [location.hash]);
 
   const tiers = category === "student" ? getStudentTiers() : getAgentTiers();
   const currentProductId = subscription.planTier?.productId;
