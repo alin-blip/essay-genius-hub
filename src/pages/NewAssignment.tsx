@@ -331,7 +331,7 @@ const NewAssignment = () => {
       setGenerating(false);
       console.error("Generation error:", err);
       const msg = err.message || "";
-      const isTimeout = msg.includes("Failed to send") || msg.includes("504") || msg.includes("TimeoutError") || msg.includes("network");
+      const isTimeout = err.name === "AbortError" || msg.includes("Failed to send") || msg.includes("504") || msg.includes("TimeoutError") || msg.includes("network") || msg.includes("aborted");
       toast({
         title: isTimeout ? "Generation timed out" : "Generation Failed",
         description: isTimeout
