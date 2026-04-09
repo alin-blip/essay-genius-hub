@@ -197,33 +197,20 @@ const AssignmentEditor = () => {
     setAutoHumanizing(true);
     setAutoHumanizePass(0);
     setAutoHumanizeScore(null);
-    setAutoHumanizeStop(false);
     setAutoHumanizeTotalCredits(0);
+    stopAutoHumanizeRef.current = false;
 
     let currentContent = activeContent || assignment.generated_content;
     let currentScore = 100;
     let totalCredits = 0;
     let creditsRemaining = 0;
-    let stopped = false;
+    let passCount = 0;
 
-    // Use a ref-like approach via closure over a mutable object
-    const stopRef = { current: false };
-    setAutoHumanizeStop(false);
-    // We'll check stopRef.current which gets set via the stop handler
-    const originalSetStop = setAutoHumanizeStop;
-    const wrappedSetStop = (val: boolean | ((prev: boolean) => boolean)) => {
-      if (val === true) stopRef.current = true;
-      originalSetStop(val);
-    };
-
-    // Replace the stop setter temporarily
-    // Actually, simpler: we'll use a module-level ref
-    // Let's just check a flag via state updates
-    
     for (let pass = 1; pass <= MAX_PASSES; pass++) {
-      if (stopRef.current) { stopped = true; break; }
+      if (stopAutoHumanizeRef.current) break;
       
       setAutoHumanizePass(pass);
+      passCount = pass;
 
       // Step 1: Humanize
       try {
@@ -243,7 +230,7 @@ const AssignmentEditor = () => {
         return;
       }
 
-      if (stopRef.current) { stopped = true; break; }
+      if (stopAutoHumanizeRef.current) break;
 
       // Step 2: Check AI detection
       try {
@@ -255,12 +242,10 @@ const AssignmentEditor = () => {
         
         currentScore = detData.overall_score ?? 50;
         setAutoHumanizeScore(currentScore);
-      } catch (err: any) {
-        // Detection failed but humanization succeeded — save what we have
-        currentScore = 0; // assume good enough
+      } catch {
+        currentScore = 0;
       }
 
-      // Check if target reached
       if (currentScore <= TARGET_SCORE) break;
     }
 
@@ -278,16 +263,17 @@ const AssignmentEditor = () => {
     }
 
     setAutoHumanizing(false);
+    const wasStopped = stopAutoHumanizeRef.current;
     toast({
-      title: currentScore <= TARGET_SCORE ? "Auto-Humanize Complete! ✨" : stopped ? "Auto-Humanize Stopped" : `Auto-Humanize Done (Score: ${currentScore}%)`,
-      description: `${totalCredits} credits used across ${autoHumanizePass || 1} passes. ${creditsRemaining} remaining.`,
+      title: currentScore <= TARGET_SCORE ? "Auto-Humanize Complete! ✨" : wasStopped ? "Auto-Humanize Stopped" : `Auto-Humanize Done (Score: ${currentScore}%)`,
+      description: `${totalCredits} credits used across ${passCount} pass${passCount > 1 ? "es" : ""}. ${creditsRemaining} remaining.`,
     });
   };
 
-  // Stop handler for auto-humanize — we need a ref to communicate with the loop
-  const autoHumanizeStopRef = useCallback(() => {
-    setAutoHumanizeStop(true);
+  const handleStopAutoHumanize = useCallback(() => {
+    stopAutoHumanizeRef.current = true;
   }, []);
+
 
   const handleExportTxt = () => {
     if (!activeContent || !assignment) return;
