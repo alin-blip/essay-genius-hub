@@ -1,56 +1,65 @@
 
 
-## Plan: Simplificare pricing + sidebar + free trial launch
+## Plan: Manager scroll, Early Bird labeling, Stripe verification + conversion improvements
 
-### Ce se schimbă
+### 1. Sidebar Manager link → scroll la secțiunea Manager
 
-**1. Landing page — un singur CTA "Start for free"**
-- Eliminăm `PricingSection` complet din Landing page
-- Eliminăm linkul "Pricing" din nav
-- Hero CTA devine "Start for Free — 1,500 words free"
-- CTA-ul final de pe pagină: același mesaj, fără prețuri
-- Fișiere: `src/pages/Landing.tsx`
+**Problema:** Click pe "Manager" din sidebar duce la `/plans#manager` dar pagina nu scrollează la secțiunea de manager add-ons.
 
-**2. Sidebar pentru userii logați**
-- Creăm `src/components/AppSidebar.tsx` cu: Dashboard, New Assignment, Plans & Upgrade, Manager (upsell), Settings
-- Creăm `src/components/DashboardLayout.tsx` — wrapper cu `SidebarProvider` + `AppSidebar` + `SidebarTrigger` în header
-- Aplicăm layout-ul pe toate paginile protejate: Dashboard, NewAssignment, AssignmentEditor, Plans, Settings
-- Eliminăm nav-ul inline din Dashboard (și din celelalte pagini care îl au)
-- Fișiere: `src/components/AppSidebar.tsx` (nou), `src/components/DashboardLayout.tsx` (nou), `src/pages/Dashboard.tsx`, `src/pages/NewAssignment.tsx`, `src/pages/AssignmentEditor.tsx`, `src/pages/Settings.tsx`, `src/pages/Plans.tsx`
+**Fix:** În `Plans.tsx`, adăugăm un `useEffect` care verifică `location.hash === "#manager"` și face `scrollIntoView` pe secțiunea Manager. Adăugăm `id="manager"` pe div-ul cu Manager Add-ons.
 
-**3. Manager upsell în dashboard + sidebar**
-- În sidebar: item "Assignment Manager" cu badge "50% OFF" și icon Crown
-- Pe Dashboard: card upsell vizibil care arată cele 3 addon-uri cu preț tăiat + 50% early bird
-- Prețurile afișate: ~~£100~~ £50/mo, ~~£499~~ £250/year, ~~£997~~ £499/year
-- Acestea sunt doar prețuri afișate; checkout-ul va folosi un coupon Stripe separat (creat cu tool-ul Stripe)
-- Fișiere: `src/components/AppSidebar.tsx`, `src/pages/Dashboard.tsx`
+**Fișier:** `src/pages/Plans.tsx`
 
-**4. Plans page — simplificat**
-- Păstrăm pagina Plans dar o facem accesibilă doar din sidebar/dashboard
-- Arătăm Student + Agent tiers (ca și până acum) + Manager add-ons cu early bird 50%
-- Nu mai apare pe landing
+### 2. Early Bird messaging — fără coupon, doar label
 
-**5. Free trial la launch**
-- Default credits rămân 1,500 (actualizare din 5,000 curent) pentru userii noi
-- Update mesajele din landing/hero: "Start with 1,500 free words"
+**Ce ai cerut:** Prețurile din Stripe rămân exact cum sunt. Nu modificăm nimic în Stripe. Doar adăugăm vizual label-ul "Early Bird" pe prețurile existente, ca mesaj de marketing.
+
+**Ce facem:**
+- Pe Plans page, la secțiunea Manager, adăugăm badge "🎓 Early Bird Price" pe fiecare card
+- Pe Dashboard upsell dialog, la fel — badge "Early Bird" vizibil
+- Prețurile rămân identice cu ce e în Stripe (£100/mo, £499/yr, £997/yr)
+- NU se creează coupon, NU se modifică priceId-urile
+
+**Fișiere:** `src/pages/Plans.tsx`, `src/pages/Dashboard.tsx`
+
+### 3. Verificare Stripe — funcționează?
+
+Am verificat codul:
+- **Checkout:** `create-checkout` edge function există, primește `price_id`, creează sesiune Stripe → redirect. Funcționează.
+- **Subscription check:** `check-subscription` verifică subscripția activă pe Stripe, returnează `product_id`. Funcționează.
+- **Customer portal:** `customer-portal` creează sesiune de billing portal pentru manage/cancel. Funcționează.
+- **Upgrade:** Dacă userul e deja abonat și dă click pe alt plan, codul îl trimite la Customer Portal unde poate face switch. Funcționează.
+- **Produsele Stripe** sunt toate create corect (Student Basic/Plus/Pro, Agent Starter/Pro/Unlimited, Manager Monthly/Academic/Final Year).
+
+**Concluzie: Stripe e funcțional.** Checkout, upgrade, portal — toate merg.
+
+### 4. Ce se întâmplă când userul rămâne fără credite?
+
+**Acum:** Generarea eșuează cu eroare "Insufficient credits". Nu e clar ce trebuie să facă userul.
+
+**Improvement:** Adăugăm un **low-credits banner** pe Dashboard când creditele < 500 (sub 1 assignment). Banner cu CTA "Upgrade for more words" care duce la `/plans`. De asemenea, în flow-ul de generare din `NewAssignment`, dacă creditele sunt sub word_count cerut, arătăm un mesaj clar cu link la upgrade.
+
+**Fișiere:** `src/pages/Dashboard.tsx`, `src/pages/NewAssignment.tsx`
+
+### 5. Conversion improvements
+
+| Improvement | Unde | Ce facem |
+|---|---|---|
+| **Low credits nudge** | Dashboard | Banner galben când credits < 500: "Running low on words? Upgrade now" |
+| **Post-generation upsell** | Dashboard (after checkout success) | Deja există — arată Manager upsell dialog |
+| **Manager upsell card permanent** | Dashboard | Card vizibil permanent (nu doar dialog) sub stats, cu "Early Bird" badge și CTA |
+| **Credits exhausted blocker** | NewAssignment | Dacă credits < word_count selectat, disable butonul Generate și arată "Upgrade to continue" |
+
+### Rezumat implementare
+
+1. `Plans.tsx` — adaugă `id="manager"` + `useEffect` scroll + "Early Bird Price" badge pe Manager cards
+2. `Dashboard.tsx` — low-credits banner + Manager upsell card permanent (nu doar dialog) + "Early Bird" badge
+3. `NewAssignment.tsx` — verificare credits vs word_count selectat, disable Generate + upgrade CTA
 
 ### Detalii tehnice
 
-| Componentă | Acțiune |
-|------------|---------|
-| `Landing.tsx` | Elimină import PricingSection, elimină `#pricing` din nav, actualizează hero text |
-| `AppSidebar.tsx` | Nou — sidebar cu NavLink, icons, Manager upsell badge |
-| `DashboardLayout.tsx` | Nou — SidebarProvider wrapper |
-| `Dashboard.tsx` | Înlocuiește nav cu DashboardLayout, adaugă Manager upsell card prominent |
-| `NewAssignment.tsx`, `AssignmentEditor.tsx`, `Settings.tsx`, `Plans.tsx` | Wrap în DashboardLayout |
-| `profiles` table | Migration: `ALTER TABLE profiles ALTER COLUMN credits_balance SET DEFAULT 1500` |
-| Stripe | Creare coupon 50% "EARLYBIRD50" pentru manager add-ons |
-
-### Ordine implementare
-1. Migration DB (default credits 1500)
-2. Creare Stripe coupon 50%
-3. AppSidebar + DashboardLayout
-4. Refactor pagini protejate cu sidebar
-5. Simplificare Landing (elimină pricing, update CTA)
-6. Manager upsell card în Dashboard
+- Scroll: `document.getElementById("manager")?.scrollIntoView({ behavior: "smooth" })`
+- Early Bird badge: `<Badge className="bg-amber-500 text-white">🎓 Early Bird</Badge>` pe prețuri existente
+- Low credits threshold: 500 words (configurable)
+- Nu se modifică nimic în Stripe, edge functions, sau subscription-tiers.ts
 
