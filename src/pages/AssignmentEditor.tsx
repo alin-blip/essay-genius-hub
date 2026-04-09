@@ -19,6 +19,7 @@ import {
   FileType,
   Save,
   Bot,
+  Zap,
   Square,
 } from "lucide-react";
 import {
