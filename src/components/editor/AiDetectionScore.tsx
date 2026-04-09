@@ -86,7 +86,7 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
             <div className="absolute inset-0 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
           </div>
           <div className="flex-1 space-y-1.5">
-            <p className="text-sm font-medium text-foreground">Scanning for AI patterns...</p>
+            <p className="text-sm font-medium text-foreground">Scanning with GPTZero...</p>
             <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
               <div className="h-full rounded-full bg-accent/60 animate-[pulse_1.5s_ease-in-out_infinite] w-2/3" />
             </div>
@@ -101,34 +101,39 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {getScoreIcon(result.human_score)}
-            <span className="font-semibold text-sm">{getScoreLabel(result.human_score)}</span>
+            {getScoreIcon(result!.human_score)}
+            <span className="font-semibold text-sm">{getScoreLabel(result!.human_score)}</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={handleCheck} disabled={checking} className="text-xs">
-            {checking ? <Loader2 className="h-3 w-3 animate-spin" /> : "Re-check"}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground">
+              Powered by GPTZero
+            </Badge>
+            <Button variant="ghost" size="sm" onClick={handleCheck} disabled={checking} className="text-xs">
+              {checking ? <Loader2 className="h-3 w-3 animate-spin" /> : "Re-check"}
+            </Button>
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-muted-foreground mb-1">Human Score</p>
             <div className="flex items-center gap-2">
-              <Progress value={result.human_score} className="h-2 flex-1" />
-              <span className={`text-sm font-bold ${getScoreColor(result.human_score)}`}>
-                {result.human_score}%
+              <Progress value={result!.human_score} className="h-2 flex-1" />
+              <span className={`text-sm font-bold ${getScoreColor(result!.human_score)}`}>
+                {result!.human_score}%
               </span>
             </div>
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">AI Detected</p>
             <div className="flex items-center gap-2">
-              <Progress value={result.overall_score} className="h-2 flex-1" />
+              <Progress value={result!.overall_score} className="h-2 flex-1" />
               <span className="text-sm font-bold text-muted-foreground">
-                {result.overall_score}%
+                {result!.overall_score}%
               </span>
             </div>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">{result.details}</p>
+        <p className="text-xs text-muted-foreground">{result!.details}</p>
       </CardContent>
     </Card>
   );
