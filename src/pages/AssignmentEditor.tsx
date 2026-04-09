@@ -365,15 +365,27 @@ const AssignmentEditor = () => {
                 </Button>
               </div>
             ) : (
-              <Button
-                size="sm"
-                onClick={handleHumanize}
-                disabled={humanizing}
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
-              >
-                <Wand2 className="h-4 w-4 mr-1" />
-                {humanizing ? "Humanizing..." : "Humanize Text"}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  onClick={handleHumanize}
+                  disabled={humanizing || autoHumanizing}
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  <Wand2 className="h-4 w-4 mr-1" />
+                  {humanizing ? "Humanizing..." : "Humanize"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleAutoHumanize}
+                  disabled={humanizing || autoHumanizing}
+                  variant="outline"
+                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Bot className="h-4 w-4 mr-1" />
+                  Auto-Humanize
+                </Button>
+              </div>
             )}
 
             <AiDetectionScore content={activeContent || ""} assignmentId={id!} />
