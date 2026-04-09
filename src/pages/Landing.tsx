@@ -313,11 +313,11 @@ const Landing = () => {
             Ready to Ace Your Assignments?
           </h2>
           <p className="text-primary-foreground/80 text-lg max-w-xl mx-auto">
-            Join 7,000+ students already using AssignmentPro. Start with 5,000 free words.
+            Join 7,000+ students already using AssignmentPro. Start with 1,500 free words.
           </p>
           <Button size="lg" asChild className="bg-accent text-accent-foreground hover:bg-accent/90 text-base px-10">
             <Link to="/signup">
-              Create Free Account
+              Start for Free
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
