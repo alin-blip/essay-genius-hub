@@ -342,6 +342,51 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* Low Credits Banner */}
+        {(profile?.credits_balance ?? 0) < 500 && (
+          <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardContent className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+                <div>
+                  <p className="font-medium text-foreground">Running low on words</p>
+                  <p className="text-sm text-muted-foreground">
+                    You have {(profile?.credits_balance ?? 0).toLocaleString()} words remaining. Upgrade to keep generating assignments.
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+                <Link to="/plans">Upgrade Now</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Manager Upsell Card */}
+        {!subscription.hasManagerAddon && (
+          <Card className="border-accent/30 bg-accent/5">
+            <CardContent className="p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                  <Crown className="h-5 w-5 text-accent" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-foreground">Assignment Manager</h3>
+                    <Badge className="bg-amber-500 text-white text-[10px]">🎓 Early Bird</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Let a real person handle your assignments — from generation to upload. Starting from £{MANAGER_ADDONS[0]?.priceGBP}/mo.
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90 whitespace-nowrap">
+                <Link to="/plans#manager">View Plans</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Word Usage Card */}
         <WordUsageCard
           creditsBalance={profile?.credits_balance ?? 0}
@@ -605,9 +650,9 @@ const Dashboard = () => {
                 )}
                 <CardContent className={`p-4 space-y-3 ${addon.highlighted ? "pt-8" : ""}`}>
                   <h4 className="font-semibold text-sm text-foreground">{addon.name}</h4>
+                  <Badge className="bg-amber-500 text-white text-[10px] mb-1">🎓 Early Bird</Badge>
                   <p className="text-2xl font-bold text-primary">
-                    <span className="line-through text-muted-foreground text-sm mr-1">£{addon.priceGBP}</span>
-                    £{Math.round(addon.priceGBP / 2)}
+                    £{addon.priceGBP}
                     <span className="text-xs font-normal text-muted-foreground">{addon.billing}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">{addon.description}</p>

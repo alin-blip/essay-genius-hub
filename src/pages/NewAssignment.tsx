@@ -436,19 +436,39 @@ const NewAssignment = () => {
                     <p className="text-sm text-foreground line-clamp-3">{brief}</p>
                   </div>
                 )}
-                <div className="p-4 rounded-lg border-2 border-accent/30 bg-accent/5 flex items-center justify-between">
+                <div className={`p-4 rounded-lg border-2 flex items-center justify-between ${
+                  creditsAvailable < creditCost
+                    ? "border-destructive/30 bg-destructive/5"
+                    : "border-accent/30 bg-accent/5"
+                }`}>
                   <div className="flex items-center gap-3">
-                    <CreditCard className="h-5 w-5 text-accent" />
+                    <CreditCard className={`h-5 w-5 ${creditsAvailable < creditCost ? "text-destructive" : "text-accent"}`} />
                     <div>
                       <p className="font-medium text-foreground">Credit Cost</p>
                       <p className="text-sm text-muted-foreground">{creditCost.toLocaleString()} words from your balance</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-foreground">{creditsAvailable.toLocaleString()}</p>
+                    <p className={`font-bold ${creditsAvailable < creditCost ? "text-destructive" : "text-foreground"}`}>{creditsAvailable.toLocaleString()}</p>
                     <p className="text-xs text-muted-foreground">credits available</p>
                   </div>
                 </div>
+                {creditsAvailable < creditCost && (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-3">
+                    <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-foreground">Insufficient credits</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        You need {creditCost.toLocaleString()} words but only have {creditsAvailable.toLocaleString()}. Upgrade your plan to continue.
+                      </p>
+                      <Button size="sm" className="mt-2 bg-accent text-accent-foreground hover:bg-accent/90" asChild>
+                        <Link to="/plans">
+                          <Crown className="h-3 w-3 mr-1" /> Upgrade Plan
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

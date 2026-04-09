@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,8 +18,17 @@ import {
 const Plans = () => {
   const { subscription, refreshSubscription } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [category, setCategory] = useState<"student" | "agent">("student");
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location.hash === "#manager") {
+      setTimeout(() => {
+        document.getElementById("manager")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  }, [location.hash]);
 
   const tiers = category === "student" ? getStudentTiers() : getAgentTiers();
   const currentProductId = subscription.planTier?.productId;
@@ -183,7 +192,7 @@ const Plans = () => {
         </div>
 
         {/* Manager Add-ons */}
-        <div className="space-y-4">
+        <div id="manager" className="space-y-4 scroll-mt-20">
           <div className="text-center">
             <h2 className="text-xl font-bold text-foreground flex items-center justify-center gap-2">
               <Sparkles className="h-5 w-5 text-accent" />
@@ -225,6 +234,7 @@ const Plans = () => {
                   <CardContent className="p-6 pt-8 space-y-4">
                     <div>
                       <h3 className="font-bold text-foreground">{addon.name}</h3>
+                      <Badge className="bg-amber-500 text-white mt-1 text-[10px]">🎓 Early Bird Price</Badge>
                       <div className="mt-1">
                         <span className="text-2xl font-bold text-primary">£{addon.priceGBP}</span>
                         <span className="text-sm text-muted-foreground">{addon.billing}</span>
