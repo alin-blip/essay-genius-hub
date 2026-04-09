@@ -224,24 +224,43 @@ const NewAssignment = () => {
     setGenerating(true);
 
     try {
-      const { data, error } = await supabase.functions.invoke("generate-assignment", {
-        body: {
-          title,
-          module_name: moduleName,
-          unit_number: unitNumber,
-          assignment_type: assignmentType,
-          target_grade: targetGrade,
-          word_count: wordCount[0],
-          assignment_brief: brief,
-          additional_instructions: additionalInstructions,
-          include_harvard_refs: includeHarvardRefs,
-          include_case_studies: includeCaseStudies,
-        },
-      });
+      // Use fetch directly with a 5-minute timeout for large assignments
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
 
-      if (error) {
-        // Try to extract specific error message from edge function response
-        const errorMsg = data?.error || error.message || "Generation failed";
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-assignment`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            title,
+            module_name: moduleName,
+            unit_number: unitNumber,
+            assignment_type: assignmentType,
+            target_grade: targetGrade,
+            word_count: wordCount[0],
+            assignment_brief: brief,
+            additional_instructions: additionalInstructions,
+            include_harvard_refs: includeHarvardRefs,
+            include_case_studies: includeCaseStudies,
+          }),
+          signal: controller.signal,
+        }
+      );
+      clearTimeout(timeoutId);
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        const errorMsg = data?.error || "Generation failed";
         if (errorMsg.toLowerCase().includes("insufficient credits")) {
           toast({
             title: "Insufficient credits",
