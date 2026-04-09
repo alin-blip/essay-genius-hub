@@ -1,5 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Tables } from "@/integrations/supabase/types";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ import {
   LetterText,
   FileType,
   Save,
+  Bot,
+  Square,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -58,6 +60,14 @@ const AssignmentEditor = () => {
   const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [autoHumanizing, setAutoHumanizing] = useState(false);
+  const [autoHumanizePass, setAutoHumanizePass] = useState(0);
+  const [autoHumanizeScore, setAutoHumanizeScore] = useState<number | null>(null);
+  
+  const [autoHumanizeTotalCredits, setAutoHumanizeTotalCredits] = useState(0);
+  const MAX_PASSES = 5;
+  const TARGET_SCORE = 10;
+  const stopAutoHumanizeRef = useRef(false);
 
   useEffect(() => {
     if (!user || !id) return;
@@ -182,6 +192,89 @@ const AssignmentEditor = () => {
     }
   };
 
+  const handleAutoHumanize = async () => {
+    if (!assignment?.generated_content || !id) return;
+    setAutoHumanizing(true);
+    setAutoHumanizePass(0);
+    setAutoHumanizeScore(null);
+    setAutoHumanizeTotalCredits(0);
+    stopAutoHumanizeRef.current = false;
+
+    let currentContent = activeContent || assignment.generated_content;
+    let currentScore = 100;
+    let totalCredits = 0;
+    let creditsRemaining = 0;
+    let passCount = 0;
+
+    for (let pass = 1; pass <= MAX_PASSES; pass++) {
+      if (stopAutoHumanizeRef.current) break;
+      
+      setAutoHumanizePass(pass);
+      passCount = pass;
+
+      // Step 1: Humanize
+      try {
+        const { data: humData, error: humError } = await supabase.functions.invoke("humanize-text", {
+          body: { assignment_id: id, content: currentContent },
+        });
+        if (humError) throw humError;
+        if (humData?.error) throw new Error(humData.error);
+        
+        currentContent = humData.humanized_content;
+        totalCredits += humData.credits_used || 0;
+        creditsRemaining = humData.credits_remaining || 0;
+        setAutoHumanizeTotalCredits(totalCredits);
+      } catch (err: any) {
+        setAutoHumanizing(false);
+        toast({ title: "Auto-Humanize Failed", description: err.message, variant: "destructive" });
+        return;
+      }
+
+      if (stopAutoHumanizeRef.current) break;
+
+      // Step 2: Check AI detection
+      try {
+        const { data: detData, error: detError } = await supabase.functions.invoke("check-ai-detection", {
+          body: { content: currentContent, assignment_id: id },
+        });
+        if (detError) throw detError;
+        if (detData?.error) throw new Error(detData.error);
+        
+        currentScore = detData.overall_score ?? 50;
+        setAutoHumanizeScore(currentScore);
+      } catch {
+        currentScore = 0;
+      }
+
+      if (currentScore <= TARGET_SCORE) break;
+    }
+
+    // Save the final result
+    const { error: saveError } = await supabase
+      .from("assignments")
+      .update({ humanized_content: currentContent } as any)
+      .eq("id", id);
+
+    if (!saveError) {
+      setAssignment((prev) => (prev ? { ...prev, humanized_content: currentContent } : prev));
+      setShowHumanized(true);
+      setEditedContent(null);
+      setHasChanges(false);
+    }
+
+    setAutoHumanizing(false);
+    const wasStopped = stopAutoHumanizeRef.current;
+    toast({
+      title: currentScore <= TARGET_SCORE ? "Auto-Humanize Complete! ✨" : wasStopped ? "Auto-Humanize Stopped" : `Auto-Humanize Done (Score: ${currentScore}%)`,
+      description: `${totalCredits} credits used across ${passCount} pass${passCount > 1 ? "es" : ""}. ${creditsRemaining} remaining.`,
+    });
+  };
+
+  const handleStopAutoHumanize = useCallback(() => {
+    stopAutoHumanizeRef.current = true;
+  }, []);
+
+
   const handleExportTxt = () => {
     if (!activeContent || !assignment) return;
     const blob = new Blob([activeContent], { type: "text/plain" });
@@ -259,15 +352,27 @@ const AssignmentEditor = () => {
                 </Button>
               </div>
             ) : (
-              <Button
-                size="sm"
-                onClick={handleHumanize}
-                disabled={humanizing}
-                className="bg-accent text-accent-foreground hover:bg-accent/90"
-              >
-                <Wand2 className="h-4 w-4 mr-1" />
-                {humanizing ? "Humanizing..." : "Humanize Text"}
-              </Button>
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  onClick={handleHumanize}
+                  disabled={humanizing || autoHumanizing}
+                  className="bg-accent text-accent-foreground hover:bg-accent/90"
+                >
+                  <Wand2 className="h-4 w-4 mr-1" />
+                  {humanizing ? "Humanizing..." : "Humanize"}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleAutoHumanize}
+                  disabled={humanizing || autoHumanizing}
+                  variant="outline"
+                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Bot className="h-4 w-4 mr-1" />
+                  Auto-Humanize
+                </Button>
+              </div>
             )}
 
             <AiDetectionScore content={activeContent || ""} assignmentId={id!} />
@@ -342,6 +447,45 @@ const AssignmentEditor = () => {
               <p className="text-xs text-muted-foreground">
                 Rewriting for natural sentence variation, vocabulary changes, and anti-detection patterns
               </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Auto-Humanize Progress */}
+        {autoHumanizing && (
+          <Card className="border-accent/30">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-accent animate-pulse" />
+                  <span className="text-sm font-medium text-foreground">
+                    Auto-Humanize — Pass {autoHumanizePass} of {MAX_PASSES}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleStopAutoHumanize}
+                  className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                >
+                  <Square className="h-3 w-3 mr-1" />
+                  Stop
+                </Button>
+              </div>
+              <Progress value={(autoHumanizePass / MAX_PASSES) * 100} className="h-2" />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {autoHumanizeScore !== null
+                    ? `Current AI Score: ${autoHumanizeScore}%`
+                    : "Checking..."}
+                </span>
+                <span>Target: &lt; {TARGET_SCORE}%</span>
+              </div>
+              {autoHumanizeTotalCredits > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Credits used so far: {autoHumanizeTotalCredits}
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
