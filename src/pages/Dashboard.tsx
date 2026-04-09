@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  GraduationCap, Plus, FileText, CreditCard, Award, TrendingUp,
-  Settings, LogOut, Trash2, Sparkles, Crown, AlertTriangle,
+  Plus, FileText, CreditCard, Award, TrendingUp,
+  Trash2, Sparkles, Crown, AlertTriangle,
   Search, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import {
