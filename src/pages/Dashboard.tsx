@@ -650,9 +650,9 @@ const Dashboard = () => {
                 )}
                 <CardContent className={`p-4 space-y-3 ${addon.highlighted ? "pt-8" : ""}`}>
                   <h4 className="font-semibold text-sm text-foreground">{addon.name}</h4>
+                  <Badge className="bg-amber-500 text-white text-[10px] mb-1">🎓 Early Bird</Badge>
                   <p className="text-2xl font-bold text-primary">
-                    <span className="line-through text-muted-foreground text-sm mr-1">£{addon.priceGBP}</span>
-                    £{Math.round(addon.priceGBP / 2)}
+                    £{addon.priceGBP}
                     <span className="text-xs font-normal text-muted-foreground">{addon.billing}</span>
                   </p>
                   <p className="text-xs text-muted-foreground">{addon.description}</p>

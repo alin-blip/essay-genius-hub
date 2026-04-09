@@ -234,6 +234,7 @@ const Plans = () => {
                   <CardContent className="p-6 pt-8 space-y-4">
                     <div>
                       <h3 className="font-bold text-foreground">{addon.name}</h3>
+                      <Badge className="bg-amber-500 text-white mt-1 text-[10px]">🎓 Early Bird Price</Badge>
                       <div className="mt-1">
                         <span className="text-2xl font-bold text-primary">£{addon.priceGBP}</span>
                         <span className="text-sm text-muted-foreground">{addon.billing}</span>
