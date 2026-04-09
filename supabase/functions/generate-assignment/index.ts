@@ -243,8 +243,8 @@ ${include_harvard_refs ? `Use Harvard referencing style throughout:
 ${include_case_studies ? `## Case Studies
 Include 2-3 real-world case studies or examples. Name specific companies, organisations, or events with approximate dates and outcomes. Integrate them naturally — don't just bolt them on.` : ""}
 
-## WORD COUNT — ABSOLUTE MINIMUM: ${word_count} WORDS
-You MUST write at least ${targetWords} words. This is a hard requirement. Count your output mentally as you write. If you feel yourself wrapping up too early, add more depth, another example, or expand your analysis. Do NOT write fewer than ${word_count} words under any circumstances. Err on the side of writing MORE rather than less.
+## WORD COUNT — EXACTLY ${word_count} WORDS (±5% tolerance)
+You MUST write approximately ${word_count} words. Your output must be between ${Math.floor(word_count * 0.95)} and ${Math.ceil(word_count * 1.05)} words. This is a hard requirement. Count your output carefully as you write. Do NOT write significantly more or less than ${word_count} words. If you find yourself going over, cut content. If under, add depth. The target is EXACTLY ${word_count} words.
 
 ## Output Format
 Write the complete assignment. Use markdown: ## for main sections, ### for subsections. Do NOT include title page, word count, or meta-commentary.`;
