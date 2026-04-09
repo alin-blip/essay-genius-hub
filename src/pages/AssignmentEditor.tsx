@@ -464,6 +464,45 @@ const AssignmentEditor = () => {
           </Card>
         )}
 
+        {/* Auto-Humanize Progress */}
+        {autoHumanizing && (
+          <Card className="border-accent/30">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-accent animate-pulse" />
+                  <span className="text-sm font-medium text-foreground">
+                    Auto-Humanize — Pass {autoHumanizePass} of {MAX_PASSES}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={autoHumanizeStopRef}
+                  className="h-7 text-xs text-muted-foreground hover:text-destructive"
+                >
+                  <Square className="h-3 w-3 mr-1" />
+                  Stop
+                </Button>
+              </div>
+              <Progress value={(autoHumanizePass / MAX_PASSES) * 100} className="h-2" />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {autoHumanizeScore !== null
+                    ? `Current AI Score: ${autoHumanizeScore}%`
+                    : "Checking..."}
+                </span>
+                <span>Target: &lt; {TARGET_SCORE}%</span>
+              </div>
+              {autoHumanizeTotalCredits > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Credits used so far: {autoHumanizeTotalCredits}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Editor */}
         <Card>
           <CardContent className="p-0">
