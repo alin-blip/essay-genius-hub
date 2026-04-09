@@ -144,7 +144,7 @@ export default function AssignmentsLibrary() {
     if (!deleteTarget) return;
     if (deleteTarget.type === "folder") {
       // Move assignments out of folder first
-      await supabase.from("assignments").update({ folder_id: null } as any).eq("folder_id" as any, deleteTarget.id);
+      await (supabase.from("assignments") as any).update({ folder_id: null }).eq("folder_id", deleteTarget.id);
       const { error } = await supabase.from("folders" as any).delete().eq("id", deleteTarget.id);
       if (error) { toast.error("Failed to delete folder"); } else { toast.success("Folder deleted"); }
     } else {
