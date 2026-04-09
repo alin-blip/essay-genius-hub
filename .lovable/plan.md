@@ -1,66 +1,49 @@
 
 
-## Audit: De ce scorul AI e 75% și cum fixăm
+## Plan: Integrare GPTZero API ca detector AI real
 
-### Problemele identificate
+### Ce se schimbă
 
-**1. AI Detection checker-ul e fake — nu e Turnitin real**
-`check-ai-detection` folosește Gemini să *ghicească* un scor. Nu e un detector real. E un AI care evaluează alt AI. Scorul de 75% poate fi complet greșit — nu reflectă ce ar zice Turnitin. Asta înseamnă că:
-- Auto-humanize loop-ul poate rula 5 pase degeaba, pentru că "scorul" e arbitrar
-- Userul pierde credite pe re-humanizări ghidate de un scor nesigur
-- Gemini e inconsistent — același text poate primi 30% sau 75% la verificări diferite
+Înlocuim estimarea Gemini din `check-ai-detection` cu un apel real la **GPTZero API** (`POST https://api.gptzero.me/v2/predict/text`). GPTZero returnează:
+- `completely_generated_prob` (0-1) — probabilitatea ca textul e complet AI
+- `average_generated_prob` (0-1) — media per propoziție
+- `overall_burstiness` — scor burstiness (mic = mai AI)
+- `document_classification` — `HUMAN_ONLY`, `MIXED`, `AI_ONLY`
+- `sentences[]` — per-sentence `generated_prob` + `highlight_sentence_for_ai`
 
-**2. Promptul de humanizare e prea agresiv — strică lucrarea**
-Promptul curent cere:
-- "false starts and self-corrections" — strică fluxul academic
-- "rhetorical questions" — nenatural în multe tipuri de assignment
-- "slightly digresses" — strică structura
-- "kind of, sort of" — prea informal pentru academic writing
-- "sentence fragments" — nu e potrivit pentru un essay universitar
+### Pași
 
-Rezultatul: textul humanizat pare scris de un student slab, nu de unul bun. Și tot are pattern-uri AI detectabile.
+**1. Adăugare secret `GPTZERO_API_KEY`**
+- Userul trebuie să obțină un API key de la [gptzero.me/developers](https://gptzero.me/developers)
+- Îl salvăm ca secret în backend
 
-**3. Generarea inițială deja are instrucțiuni anti-AI**
-`generate-assignment` are deja un prompt excelent cu burstiness, banned words, imperfections. Deci textul generat ar trebui să fie deja semi-human. Humanize-ul ar trebui doar să finiseze, nu să rescrie complet.
+**2. Rescriere `supabase/functions/check-ai-detection/index.ts`**
+- Înlocuim apelul Gemini cu `POST https://api.gptzero.me/v2/predict/text`
+- Header: `x-api-key: ${GPTZERO_API_KEY}`
+- Body: `{ "document": content }`
+- Mapăm răspunsul:
+  - `overall_score` = `completely_generated_prob * 100` (scor AI %)
+  - `human_score` = `100 - overall_score`
+  - `details` = clasificarea + burstiness + confidence
+- Păstrăm aceeași structură de răspuns `{ overall_score, human_score, details }` — UI-ul nu se schimbă
 
-### Planul de fix
+**3. UI update mic în `AiDetectionScore.tsx`**
+- Adăugăm badge "Powered by GPTZero" pentru credibilitate
+- Eliminăm disclaimer-ul "estimated" — acum e un detector real
 
-**A. Îmbunătățim promptul de humanizare — subtil, nu agresiv**
-
-Rescrierea promptului `HUMANIZE_PROMPT` cu focus pe:
-- Păstrează structura și argumentele 100% intacte
-- Înlocuiește doar vocabularul tipic AI (lista de banned words)
-- Variază lungimea propozițiilor (burstiness) fără a adăuga fragmente stupide
-- Adaugă contractions natural, fără "sort of / kind of"
-- NU adaugă digresiuni, retorici, false starts
-- Mișcă citările în poziții variate
-- Păstrează tonul academic dar natural — ca un student 2:1/First, nu ca unul slab
-
-**B. Facem AI Detection checker-ul mai robust**
-
-Schimbăm promptul din `check-ai-detection` ca să fie mai strict și consistent:
-- Adaugă criterii clare de scoring cu ponderi
-- Setăm `temperature: 0.1` (în loc de 0.3) pentru consistență
-- Adăugăm instrucțiuni clare: "Score conservatively — if unsure, give benefit of doubt to human"
-- Trimitem mai mult text (10k chars în loc de 5k) pentru analiză mai bună
-
-**C. Simplificăm UX-ul — un singur buton clar**
-
-În editor, în loc de 2 butoane (Humanize + Auto-Humanize):
-- Păstrăm doar **"Humanize"** care face o singură pasă bună
-- **"Auto-Humanize"** rămâne dar cu maxim 3 pase (nu 5) și target 15% (nu 10%, care e nerealist cu un checker AI-based)
-- Afișăm warning clar: "AI score is estimated — always check with your university's tools before submitting"
+### Ce NU se schimbă
+- Structura răspunsului edge function (same interface)
+- `AssignmentEditor.tsx` — auto-humanize loop funcționează identic
+- `humanize-text` — neatins
+- Credit logic — neatinsă
 
 ### Fișiere modificate
 
 | Fișier | Ce se schimbă |
 |--------|--------------|
-| `supabase/functions/humanize-text/index.ts` | Prompt rescris complet — subtil, păstrează calitatea |
-| `supabase/functions/check-ai-detection/index.ts` | Prompt mai strict, temp 0.1, 10k chars sample |
-| `src/pages/AssignmentEditor.tsx` | MAX_PASSES=3, TARGET_SCORE=15, warning text |
+| `supabase/functions/check-ai-detection/index.ts` | Gemini → GPTZero API call |
+| `src/components/editor/AiDetectionScore.tsx` | Badge "Powered by GPTZero" |
 
-### Ce NU schimbăm
-- `generate-assignment` — promptul e deja bun
-- Logica de credite — rămâne la fel
-- Structura edge functions — rămâne la fel
+### Prerequisit
+Userul trebuie să-și facă cont pe gptzero.me și să obțină un API key (~$0.02/scan, plan de la $15/lună).
 
