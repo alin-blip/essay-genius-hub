@@ -96,7 +96,6 @@ const Landing = () => {
     { href: "#features", label: "Features" },
     { href: "#how-it-works", label: "How It Works" },
     { href: "#testimonials", label: "Reviews" },
-    { href: "#pricing", label: "Pricing" },
     { href: "#faq", label: "FAQ" },
   ];
 
