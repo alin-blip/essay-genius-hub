@@ -1,46 +1,68 @@
 
 
-## GPTZero — funcționalități extra pe care le putem integra
+# Targeted AI Detection Reduction System
 
-GPTZero returnează deja date pe care nu le folosim. Iată ce putem adăuga:
+## Problem
+The current humanize function rewrites the entire text in one pass, which often isn't enough to bring AI detection scores down. The screenshot shows high AI detection even after humanization.
 
-### 1. Sentence-level AI highlighting în editor
-GPTZero returnează `sentences[]` cu `generated_prob` și `highlight_sentence_for_ai` per propoziție. Putem evidenția direct în TipTap editorul propozițiile marcate ca AI — roșu pentru prob > 0.7, galben pentru 0.4-0.7. Userul vede exact CE trebuie rescris, nu doar un scor global.
+## Solution: Smart Targeted Humanization
 
-### 2. Confidence level + clasificare detaliată
-GPTZero returnează `class_probabilities` (probabilitate pentru HUMAN_ONLY, MIXED, AI_ONLY) și `confidence_category` (high/medium/low). Putem afișa un badge de confidence — când e "high", userul știe că scorul e de încredere; când e "low", afișăm un warning.
+Instead of rewriting everything, we build a **feedback loop** that uses GPTZero to identify exactly which sentences are flagged, then rewrites **only those sentences** — repeating until the score drops below threshold.
 
-### 3. Sentence-level breakdown panel
-Un panou colapsabil care arată fiecare propoziție cu scorul ei individual — sortate de la cel mai AI la cel mai uman. Userul poate click pe o propoziție și editorul scrollează la ea.
+### Architecture
 
----
+```text
+User clicks "Deep Humanize"
+  │
+  ├─► GPTZero scan → get flagged sentences
+  │
+  ├─► Send ONLY flagged sentences to AI for rewriting
+  │     (with surrounding context for coherence)
+  │
+  ├─► Replace rewritten sentences back into full text
+  │
+  ├─► Re-scan with GPTZero
+  │     └─► If score > 15% AND passes < 3 → loop back
+  │     └─► If score ≤ 15% OR passes = 3 → done, save
+  │
+  └─► Show progress: "Pass 1/3... 12 sentences rewritten... Score: 45% → 22%"
+```
 
-### Plan tehnic
+### Changes
 
-**A. Edge function — returnează date extra** (`check-ai-detection/index.ts`)
-- Adăugăm în response: `sentences` (array cu text + generated_prob + highlight flag), `confidence_category`, `class_probabilities`
-- Structura răspunsului devine: `{ overall_score, human_score, details, confidence, sentences }`
+**A. New edge function: `targeted-humanize/index.ts`**
+- Accepts `content`, `assignment_id`, and optionally `flagged_sentences` from GPTZero
+- If no flagged sentences provided, calls GPTZero first to get them
+- Sends only sentences with `generated_prob > 0.5` to AI with a focused prompt: "Rewrite these specific sentences to sound more human, keeping the same meaning"
+- Reconstructs the full text with rewritten sentences spliced back in
+- Runs up to 3 passes automatically, checking GPTZero between each pass
+- Returns final content + per-pass scores for the UI
 
-**B. UI — AiDetectionScore.tsx îmbunătățit**
-- Adăugăm confidence badge (High/Medium/Low) lângă scor
-- Adăugăm panou colapsabil "Sentence Analysis" cu lista de propoziții colorate pe baza scorului
-- Click pe propoziție → callback opțional pentru scroll în editor
+**B. Enhanced humanize prompt (targeted)**
+- Instead of the generic "rewrite the whole thing", the prompt receives 5-15 specific sentences with context
+- More focused = better results per sentence
+- Prompt emphasizes: vary sentence length, add contractions, use student voice, break uniform patterns
 
-**C. TipTap highlighting** (`TipTapEditor.tsx`)
-- Adăugăm un prop `highlightedSentences` care primește array-ul de la GPTZero
-- Folosim extensia `Highlight` (deja instalată) pentru a marca propozițiile AI cu background roșu/galben
-- Buton toggle "Show AI highlights" care activează/dezactivează vizualizarea
+**C. UI: Deep Humanize button in `AssignmentEditor.tsx`**
+- New "Deep Humanize" button alongside existing "Humanize"
+- Shows real-time progress: current pass number, sentences being rewritten, score improvement
+- Progress card with pass-by-pass breakdown: "Pass 1: 65% → 42% (14 sentences) | Pass 2: 42% → 18% (6 sentences)"
+- Uses more credits (each GPTZero call + AI rewrite counts)
 
-**D. Wiring în AssignmentEditor.tsx**
-- Pasăm `sentences` din rezultatul detection-ului către TipTapEditor
-- Adăugăm state pentru toggle highlights on/off
+**D. Credit cost calculation**
+- Each pass costs: GPTZero API call + AI rewrite of flagged sentences
+- Estimate: 2-3x the cost of a single humanize, but much better results
+- Show estimated cost before user confirms
 
-### Fișiere modificate
+### Files to create/modify
 
-| Fișier | Ce se schimbă |
-|--------|--------------|
-| `supabase/functions/check-ai-detection/index.ts` | Returnează sentences + confidence extra |
-| `src/components/editor/AiDetectionScore.tsx` | Confidence badge + sentence breakdown panel |
-| `src/components/editor/TipTapEditor.tsx` | Highlight AI sentences în text |
-| `src/pages/AssignmentEditor.tsx` | Wire sentences data între componente |
+| File | Change |
+|------|--------|
+| `supabase/functions/targeted-humanize/index.ts` | **New** — multi-pass targeted humanization with GPTZero feedback loop |
+| `src/pages/AssignmentEditor.tsx` | Add "Deep Humanize" button + progress UI |
+| `src/components/editor/DeepHumanizeProgress.tsx` | **New** — progress component showing per-pass results |
+
+### Credit cost
+- Regular humanize: `word_count / 200` credits
+- Deep humanize: `word_count / 100` credits (covers up to 3 passes + GPTZero calls)
 
