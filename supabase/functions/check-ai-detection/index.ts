@@ -71,19 +71,32 @@ serve(async (req) => {
     if (burstiness != null) {
       details += ` Burstiness: ${burstiness} (higher = more human-like).`;
     }
-    const aiSentences = (documents.sentences ?? []).filter(
-      (s: any) => s.generated_prob > 0.7
-    ).length;
-    const totalSentences = (documents.sentences ?? []).length;
+
+    // Sentence-level data
+    const sentences = (documents.sentences ?? []).map((s: any) => ({
+      text: s.sentence ?? "",
+      generated_prob: s.generated_prob ?? 0,
+      highlight: s.highlight_sentence_for_ai ?? false,
+    }));
+
+    const aiSentences = sentences.filter((s: any) => s.generated_prob > 0.7).length;
+    const totalSentences = sentences.length;
     if (totalSentences > 0) {
       details += ` ${aiSentences}/${totalSentences} sentences flagged as likely AI.`;
     }
+
+    // Confidence data
+    const confidence = documents.confidence_category ?? null;
+    const classProbabilities = documents.class_probabilities ?? null;
 
     return new Response(
       JSON.stringify({
         overall_score: Math.min(100, Math.max(0, overallScore)),
         human_score: Math.min(100, Math.max(0, humanScore)),
         details,
+        confidence,
+        class_probabilities: classProbabilities,
+        sentences,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
