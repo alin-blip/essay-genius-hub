@@ -3,24 +3,36 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Shield, ShieldCheck, ShieldAlert, Loader2 } from "lucide-react";
+import { Shield, ShieldCheck, ShieldAlert, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+export interface SentenceAnalysis {
+  text: string;
+  generated_prob: number;
+  highlight: boolean;
+}
+
+export interface DetectionResult {
+  overall_score: number;
+  human_score: number;
+  details: string;
+  confidence?: string | null;
+  class_probabilities?: Record<string, number> | null;
+  sentences?: SentenceAnalysis[];
+}
 
 interface AiDetectionScoreProps {
   content: string;
   assignmentId: string;
+  onDetectionResult?: (result: DetectionResult) => void;
 }
 
-interface DetectionResult {
-  overall_score: number;
-  human_score: number;
-  details: string;
-}
-
-const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
+const AiDetectionScore = ({ content, assignmentId, onDetectionResult }: AiDetectionScoreProps) => {
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<DetectionResult | null>(null);
+  const [sentencesOpen, setSentencesOpen] = useState(false);
   const { toast } = useToast();
 
   const handleCheck = async () => {
@@ -33,6 +45,7 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setResult(data);
+      onDetectionResult?.(data);
     } catch (err: any) {
       toast({
         title: "Detection Check Failed",
@@ -62,15 +75,29 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
     return "High AI Detection Risk";
   };
 
+  const getConfidenceBadge = (confidence: string | null | undefined) => {
+    if (!confidence) return null;
+    const colors: Record<string, string> = {
+      high: "bg-green-500/15 text-green-600 border-green-500/30",
+      medium: "bg-yellow-500/15 text-yellow-600 border-yellow-500/30",
+      low: "bg-red-500/15 text-red-600 border-red-500/30",
+    };
+    return (
+      <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-medium ${colors[confidence] || ""}`}>
+        {confidence.charAt(0).toUpperCase() + confidence.slice(1)} confidence
+      </Badge>
+    );
+  };
+
+  const getSentenceColor = (prob: number) => {
+    if (prob > 0.7) return "bg-red-500/15 border-l-red-500";
+    if (prob > 0.4) return "bg-yellow-500/10 border-l-yellow-500";
+    return "bg-green-500/5 border-l-green-500";
+  };
+
   if (!result && !checking) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleCheck}
-        disabled={!content}
-        className="gap-1"
-      >
+      <Button variant="outline" size="sm" onClick={handleCheck} disabled={!content} className="gap-1">
         <Shield className="h-4 w-4" />
         AI Detection Score
       </Button>
@@ -96,6 +123,8 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
     );
   }
 
+  const sortedSentences = [...(result!.sentences || [])].sort((a, b) => b.generated_prob - a.generated_prob);
+
   return (
     <Card className="border-2">
       <CardContent className="p-4 space-y-3">
@@ -103,6 +132,7 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
           <div className="flex items-center gap-2">
             {getScoreIcon(result!.human_score)}
             <span className="font-semibold text-sm">{getScoreLabel(result!.human_score)}</span>
+            {getConfidenceBadge(result!.confidence)}
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground">
@@ -113,6 +143,7 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
             </Button>
           </div>
         </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-muted-foreground mb-1">Human Score</p>
@@ -133,7 +164,35 @@ const AiDetectionScore = ({ content, assignmentId }: AiDetectionScoreProps) => {
             </div>
           </div>
         </div>
+
         <p className="text-xs text-muted-foreground">{result!.details}</p>
+
+        {/* Sentence Analysis Panel */}
+        {sortedSentences.length > 0 && (
+          <Collapsible open={sentencesOpen} onOpenChange={setSentencesOpen}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full justify-between text-xs h-7 px-2">
+                <span>Sentence Analysis ({sortedSentences.length} sentences)</span>
+                {sentencesOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 max-h-60 overflow-y-auto space-y-1">
+              {sortedSentences.map((s, i) => (
+                <div
+                  key={i}
+                  className={`text-xs p-2 rounded border-l-2 ${getSentenceColor(s.generated_prob)}`}
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-medium text-muted-foreground">
+                      {Math.round(s.generated_prob * 100)}% AI
+                    </span>
+                  </div>
+                  <p className="text-foreground/80 line-clamp-2">{s.text}</p>
+                </div>
+              ))}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
     </Card>
   );

@@ -3,7 +3,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Highlight from "@tiptap/extension-highlight";
 import Typography from "@tiptap/extension-typography";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Bold,
@@ -15,12 +15,15 @@ import {
   Undo,
   Redo,
   RefreshCw,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { SentenceAnalysis } from "./AiDetectionScore";
 
 interface TipTapEditorProps {
   content: string;
@@ -28,6 +31,9 @@ interface TipTapEditorProps {
   onRegenerateSelection?: (selectedText: string) => void;
   regenerating?: boolean;
   editable?: boolean;
+  highlightedSentences?: SentenceAnalysis[];
+  showHighlights?: boolean;
+  onToggleHighlights?: () => void;
 }
 
 function markdownToHtml(md: string): string {
@@ -45,7 +51,6 @@ function markdownToHtml(md: string): string {
       if (/^\d+\.\s/.test(line))
         return `<li>${line.replace(/^\d+\.\s/, "")}</li>`;
       if (line.trim() === "") return "<p></p>";
-      // Handle bold
       let processed = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       processed = processed.replace(/\*(.*?)\*/g, "<em>$1</em>");
       return `<p>${processed}</p>`;
@@ -75,6 +80,7 @@ function htmlToMarkdown(html: string): string {
       case "ul": case "ol": return `${children}\n`;
       case "li": return `- ${children}\n`;
       case "br": return "\n";
+      case "mark": return children;
       default: return children;
     }
   }
@@ -91,12 +97,15 @@ const TipTapEditor = ({
   onRegenerateSelection,
   regenerating,
   editable = true,
+  highlightedSentences,
+  showHighlights,
+  onToggleHighlights,
 }: TipTapEditorProps) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder: "Start writing..." }),
-      Highlight,
+      Highlight.configure({ multicolor: true }),
       Typography,
     ],
     content: markdownToHtml(content),
@@ -116,6 +125,48 @@ const TipTapEditor = ({
     }
   }, [content, editor]);
 
+  // Apply AI sentence highlights
+  useEffect(() => {
+    if (!editor || !highlightedSentences || !showHighlights) {
+      if (editor) {
+        // Remove all highlights
+        editor.chain().selectAll().unsetHighlight().run();
+        // Restore cursor to start
+        editor.commands.setTextSelection(0);
+      }
+      return;
+    }
+
+    const text = editor.state.doc.textContent;
+    const chain = editor.chain();
+    
+    // First clear existing highlights
+    chain.selectAll().unsetHighlight();
+
+    // Apply highlights for AI sentences
+    for (const sentence of highlightedSentences) {
+      if (sentence.generated_prob <= 0.4) continue;
+      
+      const sentenceText = sentence.text.trim();
+      if (!sentenceText) continue;
+      
+      const idx = text.indexOf(sentenceText);
+      if (idx === -1) continue;
+      
+      // +1 because ProseMirror positions are 1-indexed
+      const from = idx + 1;
+      const to = from + sentenceText.length;
+      
+      const color = sentence.generated_prob > 0.7 
+        ? "rgba(239, 68, 68, 0.2)"   // red for high AI
+        : "rgba(234, 179, 8, 0.15)";  // yellow for medium
+      
+      chain.setTextSelection({ from, to }).setHighlight({ color });
+    }
+
+    chain.setTextSelection(0).run();
+  }, [editor, highlightedSentences, showHighlights]);
+
   const handleRegenerate = useCallback(() => {
     if (!editor || !onRegenerateSelection) return;
     const { from, to } = editor.state.selection;
@@ -129,6 +180,7 @@ const TipTapEditor = ({
   if (!editor) return null;
 
   const hasSelection = editor.state.selection.from !== editor.state.selection.to;
+  const hasHighlightData = highlightedSentences && highlightedSentences.length > 0;
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -223,6 +275,26 @@ const TipTapEditor = ({
             </TooltipTrigger>
             <TooltipContent>Redo</TooltipContent>
           </Tooltip>
+
+          {hasHighlightData && onToggleHighlights && (
+            <>
+              <div className="w-px h-6 bg-border mx-1" />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={showHighlights ? "default" : "outline"}
+                    size="sm"
+                    onClick={onToggleHighlights}
+                    className="text-xs gap-1"
+                  >
+                    {showHighlights ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                    {showHighlights ? "Hide AI Highlights" : "Show AI Highlights"}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Toggle AI-detected sentence highlighting</TooltipContent>
+              </Tooltip>
+            </>
+          )}
 
           {onRegenerateSelection && (
             <>
