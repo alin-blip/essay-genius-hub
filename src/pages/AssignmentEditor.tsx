@@ -4,6 +4,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -71,6 +72,7 @@ const AssignmentEditor = () => {
   const [deepHumanizing, setDeepHumanizing] = useState(false);
   const [deepHumanizePass, setDeepHumanizePass] = useState(0);
   const [deepHumanizePasses, setDeepHumanizePasses] = useState<PassResult[]>([]);
+  const [showDeepConfirm, setShowDeepConfirm] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopAutoHumanizeRef = useRef(false);
@@ -404,22 +406,34 @@ const AssignmentEditor = () => {
         <Card>
           <CardContent className="p-3 flex flex-wrap items-center gap-2">
             {assignment.humanized_content ? (
-              <div className="flex items-center gap-1 border rounded-lg p-1">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 border rounded-lg p-1">
+                  <Button
+                    variant={!showHumanized ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleVersionSwitch(false)}
+                    className="text-xs h-7"
+                  >
+                    Original
+                  </Button>
+                  <Button
+                    variant={showHumanized ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => handleVersionSwitch(true)}
+                    className="text-xs h-7"
+                  >
+                    Humanized
+                  </Button>
+                </div>
                 <Button
-                  variant={!showHumanized ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => handleVersionSwitch(false)}
-                  className="text-xs h-7"
+                  onClick={() => setShowDeepConfirm(true)}
+                  disabled={deepHumanizing}
+                  variant="outline"
+                  className="border-green-500/50 text-green-600 hover:bg-green-500 hover:text-white"
                 >
-                  Original
-                </Button>
-                <Button
-                  variant={showHumanized ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => handleVersionSwitch(true)}
-                  className="text-xs h-7"
-                >
-                  Humanized
+                  <Zap className="h-4 w-4 mr-1" />
+                  {deepHumanizing ? "Running..." : "Deep Humanize"}
                 </Button>
               </div>
             ) : (
@@ -445,7 +459,7 @@ const AssignmentEditor = () => {
                 </Button>
                 <Button
                   size="sm"
-                  onClick={handleDeepHumanize}
+                  onClick={() => setShowDeepConfirm(true)}
                   disabled={humanizing || autoHumanizing || deepHumanizing}
                   variant="outline"
                   className="border-green-500/50 text-green-600 hover:bg-green-500 hover:text-white"
@@ -612,6 +626,57 @@ const AssignmentEditor = () => {
         {/* Reference Validator */}
         <ReferenceValidator references={assignment.references_list} assignmentId={id!} />
       </div>
+
+      {/* Deep Humanize Confirmation Dialog */}
+      <Dialog open={showDeepConfirm} onOpenChange={setShowDeepConfirm}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-green-500" />
+              Deep Humanize
+            </DialogTitle>
+            <DialogDescription>
+              This will run up to {MAX_PASSES} passes of targeted sentence rewriting using AI detection feedback to minimize your AI score.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Estimated cost</span>
+              <span className="font-semibold text-foreground">
+                {Math.max(1, Math.ceil((assignment?.word_count || 3000) / 100))} credits
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Content</span>
+              <span className="text-foreground">
+                {showHumanized && assignment?.humanized_content ? "Humanized version" : "Original"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Target AI score</span>
+              <span className="text-foreground">≤ {TARGET_SCORE}%</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Only sentences flagged as AI-written will be rewritten. The rest stays unchanged.
+            </p>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setShowDeepConfirm(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setShowDeepConfirm(false);
+                handleDeepHumanize();
+              }}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Zap className="h-4 w-4 mr-1" />
+              Confirm & Run
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </DashboardLayout>
   );
