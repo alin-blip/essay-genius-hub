@@ -427,7 +427,7 @@ const AssignmentEditor = () => {
                 <Button
                   size="sm"
                   onClick={handleHumanize}
-                  disabled={humanizing || autoHumanizing}
+                  disabled={humanizing || autoHumanizing || deepHumanizing}
                   className="bg-accent text-accent-foreground hover:bg-accent/90"
                 >
                   <Wand2 className="h-4 w-4 mr-1" />
@@ -436,12 +436,22 @@ const AssignmentEditor = () => {
                 <Button
                   size="sm"
                   onClick={handleAutoHumanize}
-                  disabled={humanizing || autoHumanizing}
+                  disabled={humanizing || autoHumanizing || deepHumanizing}
                   variant="outline"
                   className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
                 >
                   <Bot className="h-4 w-4 mr-1" />
                   Auto-Humanize
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleDeepHumanize}
+                  disabled={humanizing || autoHumanizing || deepHumanizing}
+                  variant="outline"
+                  className="border-green-500/50 text-green-600 hover:bg-green-500 hover:text-white"
+                >
+                  <Zap className="h-4 w-4 mr-1" />
+                  {deepHumanizing ? "Running..." : "Deep Humanize"}
                 </Button>
               </div>
             )}
