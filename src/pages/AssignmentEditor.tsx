@@ -67,6 +67,7 @@ const AssignmentEditor = () => {
   const [autoHumanizeTotalCredits, setAutoHumanizeTotalCredits] = useState(0);
   const MAX_PASSES = 5;
   const TARGET_SCORE = 10;
+  const stopAutoHumanizeRef = useRef(false);
 
   useEffect(() => {
     if (!user || !id) return;
