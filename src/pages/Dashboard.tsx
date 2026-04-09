@@ -629,6 +629,7 @@ const Dashboard = () => {
         </DialogContent>
       </Dialog>
     </div>
+    </DashboardLayout>
   );
 };
 
