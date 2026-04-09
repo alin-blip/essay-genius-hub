@@ -1,39 +1,45 @@
 
 
-## Plan: Fix generate-assignment 504 timeout
+## Plan: Auto-Humanize Loop — humanizare repetată până AI score < 10%
 
-### Root Cause
-The `generate-assignment` edge function is timing out (504, 150s+) because it chains too many AI calls in one request:
-1. GPT-5 generation (~30-60s)
-2. Gemini AI detection check (~5-10s)
-3. Similarity check (DB query)
-4. Up to 3 humanization passes with GPT-5 (~30-60s each) + re-detection after each
+### Cum funcționează
 
-That's 4-7 AI API calls. Edge functions have a ~150s hard timeout.
+Un nou buton **"Auto-Humanize"** în editor care:
+1. Ia conținutul curent (original sau deja humanizat)
+2. Rulează `humanize-text` → primește text humanizat
+3. Rulează `check-ai-detection` pe rezultat → verifică scorul AI
+4. Dacă `overall_score > 10%`, repetă de la pas 2 cu noul text
+5. Se oprește când scorul AI < 10% SAU după maxim 5 pase (safety limit)
+6. Arată progresul live: "Pass 1/5... AI Score: 45% → Pass 2/5... AI Score: 22% → Pass 3/5... AI Score: 8% ✅"
 
-### Fix: Remove auto-humanization from generation flow
+### Modificări
 
-The humanization loop (lines 471-575) is the main culprit. The user already has a separate "Humanize" button in the editor (`humanize-text` edge function). Running it automatically during generation is redundant and causes timeouts.
+**`src/pages/AssignmentEditor.tsx`** — singura modificare:
+- Adaugă state: `autoHumanizing`, `autoHumanizePass`, `autoHumanizeScore`, `maxPasses = 5`
+- Funcție `handleAutoHumanize`:
+  - Loop: call `humanize-text` → call `check-ai-detection` → check score
+  - Dacă score ≤ 10, oprește și salvează
+  - Dacă pass === maxPasses, oprește cu ce avem (cel mai bun rezultat)
+  - La fiecare pas, actualizează UI cu pass-ul curent și scorul
+- Buton nou **"Auto-Humanize"** lângă butonul existent de "Humanize Text", cu icon `Wand2` + `Bot`
+- Progress card actualizat: arată pass-ul curent, scorul AI la fiecare iterație, și statusul
 
-**Changes to `supabase/functions/generate-assignment/index.ts`:**
-1. Remove the entire auto-humanize while loop (lines 471-575)
-2. Keep the AI detection check and similarity check (they're fast, ~10s total)
-3. Save only `generated_content` (no `humanized_content` at generation time)
-4. The user can still humanize from the editor after generation
+**Edge functions** — nicio modificare. Refolosim `humanize-text` și `check-ai-detection` existente, apelate secvențial din client.
 
-This reduces the flow to: 1 GPT-5 call + 1 Gemini call + 1 DB query = well within timeout.
+### UI în timpul procesului
 
-### Also improve error handling on client
-In `src/pages/NewAssignment.tsx`, the error message "Failed to send the request to the Edge Function" comes from the Supabase client when the function returns 504 or the connection drops. Add a more user-friendly catch for this specific error.
+Card de progress cu:
+- "Auto-Humanize — Pass 2 of 5"
+- Progress bar
+- "Current AI Score: 34% → Target: < 10%"
+- Buton "Stop" pentru a opri loop-ul devreme și a păstra rezultatul curent
 
-### Files changed
-| File | Change |
-|------|--------|
-| `supabase/functions/generate-assignment/index.ts` | Remove auto-humanize loop (~100 lines). Keep detection + similarity. |
-| `src/pages/NewAssignment.tsx` | Better error message for timeout/network failures |
+### Costuri credite
 
-### What users still get
-- AI detection score shown in generation report (1 quick Gemini call)
-- Similarity check against past assignments
-- Manual "Humanize" button in the editor (works as separate function, no timeout risk)
+Fiecare pass de humanizare costă credite (ca acum). Userul vede la final totalul: "Used 15 credits across 3 passes. 485 credits remaining."
+
+### Fișiere modificate
+| Fișier | Ce se schimbă |
+|--------|--------------|
+| `src/pages/AssignmentEditor.tsx` | Buton Auto-Humanize, loop logic, progress UI |
 
