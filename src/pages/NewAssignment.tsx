@@ -398,8 +398,80 @@ const NewAssignment = () => {
 
             {step === 3 && (
               <>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label>Assignment Brief</Label>
+
+                  {/* File Upload Area */}
+                  <div
+                    className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors cursor-pointer ${
+                      uploadedFile ? "border-accent/50 bg-accent/5" : "border-border hover:border-accent/40 hover:bg-accent/5"
+                    }`}
+                    onClick={() => !extracting && fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleFileUpload(file);
+                    }}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf,.docx,.doc,.txt,.png,.jpg,.jpeg"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                    />
+                    {extracting ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="h-8 w-8 text-accent animate-spin" />
+                        <p className="text-sm font-medium text-foreground">Extracting text from your file...</p>
+                        <p className="text-xs text-muted-foreground">AI is reading and extracting all content</p>
+                      </div>
+                    ) : uploadedFile ? (
+                      <div className="flex items-center justify-center gap-3">
+                        <FileText className="h-6 w-6 text-accent" />
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-foreground">{uploadedFile.name}</p>
+                          <p className="text-xs text-muted-foreground">Text extracted successfully · You can edit below</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadedFile(null);
+                            setBrief("");
+                            if (fileInputRef.current) fileInputRef.current.value = "";
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <Upload className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-sm font-medium text-foreground">Upload Assignment Brief</p>
+                        <p className="text-xs text-muted-foreground">
+                          Drag & drop or click · PDF, DOCX, DOC, TXT, PNG, JPG
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-card px-2 text-muted-foreground">or paste manually</span>
+                    </div>
+                  </div>
+
                   <Textarea placeholder="Paste your full assignment brief here..." value={brief} onChange={(e) => setBrief(e.target.value)} className="min-h-[200px]" />
                   <p className="text-xs text-muted-foreground">{brief.length} characters · Minimum 20 required</p>
                 </div>
