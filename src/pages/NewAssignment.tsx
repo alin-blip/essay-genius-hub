@@ -76,10 +76,13 @@ const NewAssignment = () => {
   const [progressMessage, setProgressMessage] = useState(PROGRESS_MESSAGES[0]);
   const [creditsAvailable, setCreditsAvailable] = useState(5000);
   const [monthlyCount, setMonthlyCount] = useState(0);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [extracting, setExtracting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, subscription } = useAuth();
   const progressInterval = useRef<ReturnType<typeof setInterval>>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const monthlyLimit = subscription.planTier?.assignmentsPerMonth ?? null;
   const isAtLimit = monthlyLimit !== null && monthlyCount >= monthlyLimit;
