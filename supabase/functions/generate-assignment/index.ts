@@ -291,6 +291,19 @@ REMEMBER: You MUST write approximately ${word_count} words (±5%). Not more, not
       const errText = await aiResponse.text();
       console.error("AI gateway error:", aiResponse.status, errText);
       
+      // Log the failure for audit
+      const serviceRoleKeyForLog = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const logClient = createClient(supabaseUrl, serviceRoleKeyForLog);
+      await logClient.from("generation_logs").insert({
+        user_id: user.id,
+        requested_word_count: word_count,
+        credits_before: creditsBefore,
+        ai_provider_status: aiResponse.status,
+        failure_step: "ai_generation",
+        error_message: errText.substring(0, 500),
+        metadata: { target_grade, assignment_type },
+      });
+      
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: "AI service is busy. Please try again in a moment." }), {
           status: 429,
@@ -298,13 +311,13 @@ REMEMBER: You MUST write approximately ${word_count} words (±5%). Not more, not
         });
       }
       if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI service credits exhausted. Please contact support." }), {
-          status: 402,
+        return new Response(JSON.stringify({ error: "Our AI service is temporarily unavailable. Please try again in a few minutes. No credits have been charged." }), {
+          status: 503,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       
-      return new Response(JSON.stringify({ error: "Failed to generate assignment" }), {
+      return new Response(JSON.stringify({ error: "Failed to generate assignment. Please try again. No credits have been charged." }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
