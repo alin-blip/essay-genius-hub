@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   GraduationCap,
+  Users,
   ArrowLeft,
   FileText,
   Wand2,
