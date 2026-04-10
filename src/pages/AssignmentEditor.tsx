@@ -325,6 +325,20 @@ const AssignmentEditor = () => {
             <Badge variant={showHumanized && assignment.humanized_content ? "default" : "secondary"}>
               {showHumanized && assignment.humanized_content ? "Humanized" : "Original"}
             </Badge>
+            {(() => {
+              const meta = assignment.generation_metadata as any;
+              const humanScore = meta?.ai_detection?.human_score;
+              if (humanScore == null) return null;
+              const color = humanScore >= 70 ? "bg-green-500/15 text-green-600 border-green-500/30" 
+                : humanScore >= 40 ? "bg-amber-500/15 text-amber-600 border-amber-500/30" 
+                : "bg-destructive/15 text-destructive border-destructive/30";
+              return (
+                <Badge variant="outline" className={`gap-1 ${color}`}>
+                  <Zap className="h-3 w-3" />
+                  {humanScore}% Human
+                </Badge>
+              );
+            })()}
           </div>
         </div>
 
