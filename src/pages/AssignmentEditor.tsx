@@ -57,27 +57,20 @@ const AssignmentEditor = () => {
   const [assignment, setAssignment] = useState<Tables<"assignments"> | null>(null);
   const [loading, setLoading] = useState(true);
   const [humanizing, setHumanizing] = useState(false);
-  const [humanizeProgress, setHumanizeProgress] = useState(0);
+  const [humanizePass, setHumanizePass] = useState(0);
+  const [humanizePasses, setHumanizePasses] = useState<PassResult[]>([]);
   const [copied, setCopied] = useState(false);
   const [showHumanized, setShowHumanized] = useState(false);
   const [editedContent, setEditedContent] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [autoHumanizing, setAutoHumanizing] = useState(false);
-  const [autoHumanizePass, setAutoHumanizePass] = useState(0);
-  const [autoHumanizeScore, setAutoHumanizeScore] = useState<number | null>(null);
-  const [autoHumanizeTotalCredits, setAutoHumanizeTotalCredits] = useState(0);
   const [detectionSentences, setDetectionSentences] = useState<SentenceAnalysis[]>([]);
   const [showAiHighlights, setShowAiHighlights] = useState(false);
-  const [deepHumanizing, setDeepHumanizing] = useState(false);
-  const [deepHumanizePass, setDeepHumanizePass] = useState(0);
-  const [deepHumanizePasses, setDeepHumanizePasses] = useState<PassResult[]>([]);
-  const [showDeepConfirm, setShowDeepConfirm] = useState(false);
+  const [showHumanizeConfirm, setShowHumanizeConfirm] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
-  const stopAutoHumanizeRef = useRef(false);
-  const stopDeepHumanizeRef = useRef(false);
+  const stopHumanizeRef = useRef(false);
 
   const [adminName, setAdminName] = useState<string | null>(null);
 
