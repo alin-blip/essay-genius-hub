@@ -78,13 +78,15 @@ const AssignmentEditor = () => {
   const stopAutoHumanizeRef = useRef(false);
   const stopDeepHumanizeRef = useRef(false);
 
+  const [adminName, setAdminName] = useState<string | null>(null);
+
   useEffect(() => {
     if (!user || !id) return;
+    // RLS allows both owner and admin access, so don't filter by user_id
     supabase
       .from("assignments")
       .select("*")
       .eq("id", id)
-      .eq("user_id", user.id)
       .single()
       .then(({ data, error }) => {
         if (error || !data) {
@@ -94,6 +96,30 @@ const AssignmentEditor = () => {
         setAssignment(data);
         if (data.humanized_content) setShowHumanized(true);
         setLoading(false);
+
+        // If current user is the owner, check if managed by an admin
+        if (data.user_id === user.id) {
+          supabase
+            .from("managed_students")
+            .select("admin_id")
+            .eq("student_id", user.id)
+            .eq("status", "accepted")
+            .limit(1)
+            .then(({ data: managers }) => {
+              if (managers && managers.length > 0) {
+                supabase
+                  .from("profiles")
+                  .select("full_name")
+                  .eq("user_id", managers[0].admin_id)
+                  .single()
+                  .then(({ data: profile }) => {
+                    if (profile?.full_name) {
+                      setAdminName(profile.full_name);
+                    }
+                  });
+              }
+            });
+        }
       });
   }, [user, id, navigate]);
 
