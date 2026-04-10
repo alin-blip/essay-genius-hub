@@ -417,6 +417,12 @@ const AssignmentEditor = () => {
               <span>·</span>
               <span>{GRADE_LABELS[assignment.target_grade] || assignment.target_grade}</span>
             </div>
+            {adminName && (
+              <Badge variant="outline" className="mt-2 gap-1 text-xs border-accent text-accent">
+                <Users className="h-3 w-3" />
+                Managed by {adminName}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <Badge variant="secondary" className="gap-1">
