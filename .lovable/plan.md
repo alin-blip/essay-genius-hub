@@ -1,101 +1,91 @@
 
 
-# Plan Hybrid: Undetectable.ai + Surse Reale OpenAlex + GPTZero Real Scan
+# Audit General — Platforma AssignmentPro
 
-## Problema actuală
+## Starea Bazei de Date
 
-1. **Humanizarea** folosește GPT-5 care tot produce pattern-uri detectabile de GPTZero
-2. **Auto-check AI detection** la generare folosește Gemini ca "meta-detector" — inexact, nu reflectă scorul real GPTZero
-3. **Referințele** sunt fabricate de AI — Crossref validarea post-factum nu le face reale
+- **3 utilizatori** inregistrati, **9 assignments** (toate "completed")
+- **12 tabele** in schema publica: assignments, profiles, folders, managed_students, affiliates, referrals, affiliate_payouts, generation_logs, email_send_log/state, email_unsubscribe_tokens, suppressed_emails
+- **RLS policies**: Toate tabelele au politici corecte — utilizatori vad doar datele proprii, adminii au acces prin `is_admin_of()`, affiliatii prin `is_affiliate_of_user()`
+- **Credit tampering protection**: Trigger `prevent_credit_tampering` exista — bine
 
-## Ce schimbăm
+## Ce Functioneaza
 
-### 1. Secret nou: `UNDETECTABLE_API_KEY`
-- Userul trebuie să-și ia API key de la https://undetectable.ai/develop
-- Se adaugă ca secret în proiect
+| Functionalitate | Status | Detalii |
+|---|---|---|
+| Autentificare (email) | OK | Login/signup funcțional |
+| Creare assignment (wizard) | OK | 4 pasi, validare completa |
+| Generare assignment (GPT-5) | OK | Funcționează cu Lovable AI Gateway |
+| Editor TipTap cu formatare | OK | Markdown/HTML, highlight AI |
+| Export PDF/DOCX | OK | Biblioteci integrate |
+| Verificare AI (GPTZero) | OK | Check-ai-detection funcțional |
+| Verificare similaritate | OK | Jaccard n-gram intern |
+| Validare referinte (Crossref) | OK | validate-references funcțional |
+| Dashboard cu stats | OK | Usage chart, credit tracking |
+| Subscription check (Stripe) | OK | Funcționează (user curent: unsubscribed) |
+| Admin dashboard | OK | Email whitelist, credit adjust |
+| Admin student management | OK | Invite, realtime notifications |
+| Folder management | OK | CRUD cu RLS |
+| Affiliate system | OK | Apply, referrals, payouts |
+| Email transactional | OK | Queue-based (pgmq), templates |
+| Landing page | OK | Features, pricing, testimonials, FAQ |
 
-### 2. Edge function `humanize-text/index.ts` — rescriere completă
-Înlocuim call-ul la Lovable AI cu Undetectable.ai API (submit/poll pattern):
+## Probleme Identificate
 
-```text
-POST https://humanize.undetectable.ai/submit
-  { content, readability: "University", purpose: "Essay", strength: "More Human", model: "v11sr" }
-  → returns { id }
+### 1. CRITIC — AI Detection inca foarte ridicat
+Ultimele assignments generate (9 Apr) au scoruri AI de **85-90%**. Cauza: datele din DB arata ca AI detection-ul inca foloseste **textul generat de Gemini** (vechi), nu GPTZero real. Noile edge functions (Undetectable.ai + OpenAlex) **nu au fost inca testate** — niciun assignment generat dupa deploy.
 
-Poll every 7s:
-POST https://humanize.undetectable.ai/document
-  { id }
-  → until output exists (timeout 120s)
-```
+- `fetch-references` — deployed dar **0 invocari** (doar boot log)
+- `humanize-text` — deployed, **0 invocari** 
+- `targeted-humanize` — deployed, **0 invocari**
+- `generate-assignment` — **0 loguri recente** (nu s-a generat nimic dupa update)
 
-Parametrii: readability=University, purpose=Essay, strength="More Human", model="v11sr" (best humanization).
+**Concluzie**: Codul este updated dar nu a fost testat. Nu stim daca Undetectable.ai API key-ul este valid sau daca OpenAlex returneaza referinte relevante.
 
-### 3. Edge function `targeted-humanize/index.ts` — simplificare
-Actuala logică GPTZero scan → rewrite cu GPT-5 se înlocuiește cu:
-- GPTZero scan pentru scorul inițial
-- Trimite tot conținutul la Undetectable.ai (nu doar propozițiile flagged — API-ul lor decide ce rescrie)
-- GPTZero re-scan pentru confirmare
-- Returnează pass results ca înainte
+### 2. IMPORTANT — Scorurile AI Detection din DB sunt vechi (Gemini)
+2 din 3 assignments recente au `human_score: 10-15` si `details` care spun "exhibits characteristics common in AI-generated content" — acesta e output Gemini, nu GPTZero. Un assignment are `human_score: 90` cu detalii diferite. Inconsistenta totala.
 
-### 4. Auto-check din `generate-assignment/index.ts` — GPTZero real
-Înlocuim blocul Gemini "meta-detector" (liniile 346-394) cu un scan GPTZero real:
-```text
-POST https://api.gptzero.me/v2/predict/text
-  { document: generatedContent }
-  → overall_score, human_score, sentences
-```
-Asta dă feedback precis direct la generare.
+### 3. MEDIE — Console Error pe Landing Page
+`RevealSection` component primeste `ref` fara `React.forwardRef()`. Warning repetat in consola:
+> "Function components cannot be given refs"
 
-### 5. Retrieval surse reale — nou: `fetch-references/index.ts`
-Edge function nouă care caută surse academice reale din OpenAlex (gratuit, fără API key):
-```text
-GET https://api.openalex.org/works?search={topic}&filter=publication_year:2019-2025&per_page=20&mailto=support@assignmentpro.uk
-```
-- Se apelează ÎNAINTE de generarea assignment-ului
-- Returnează titluri, autori, an, DOI, journal
-- Referințele reale se includ în prompt-ul de generare ca "MUST USE these references"
+### 4. MEDIE — Lipsesc functionalitati promise
+- **Google OAuth** — nu e configurat (doar email auth)
+- **Onboarding page** — exista in router dar nu stim daca e functional
+- **Plans page** — exista dar userul curent nu are subscription
 
-### 6. Update `generate-assignment/index.ts` — multi-step cu surse reale
-Fluxul devine:
-```text
-Step 1: Call fetch-references cu titlul + brief → lista de surse reale
-Step 2: Injectează sursele în system prompt: "Use ONLY these real references: [...]"
-Step 3: Generează assignment-ul cu GPT-5 (cum e acum)
-Step 4: GPTZero scan real pentru AI detection score
-Step 5: Similarity check (cum e acum)
-```
+### 5. MINORA — React Router v6 deprecation warnings
+- `v7_startTransition` si `v7_relativeSplatPath` flags nesetate
 
-### 7. UI updates
-- `AssignmentEditor.tsx`: timeout humanize mărit la 150s, mesaje progress actualizate
-- `DeepHumanizeProgress.tsx`: labels actualizate ("AI bypass engine" în loc de "rewriting")
-- `NewAssignment.tsx`: progress messages actualizate pentru multi-step
+### 6. MINORA — Admin auth prin email hardcodat
+`AdminDashboard.tsx` si `admin-data/index.ts` ambele au `ADMIN_EMAILS` hardcodat. Functioneaza dar nu e scalabil.
 
-## Fișiere de creat/modificat
+## Ce Trebuie Testat Urgent
 
-| Fișier | Schimbare |
-|--------|-----------|
-| **Secret** `UNDETECTABLE_API_KEY` | Nou — solicitat userului |
-| `supabase/functions/humanize-text/index.ts` | Rescriere — Undetectable.ai submit/poll |
-| `supabase/functions/targeted-humanize/index.ts` | Rescriere — Undetectable.ai + GPTZero |
-| `supabase/functions/fetch-references/index.ts` | **Nou** — OpenAlex API search |
-| `supabase/functions/generate-assignment/index.ts` | Multi-step: fetch refs → generate → GPTZero real scan |
-| `src/pages/AssignmentEditor.tsx` | Timeout + progress messages |
-| `src/components/editor/DeepHumanizeProgress.tsx` | Labels |
-| `src/pages/NewAssignment.tsx` | Progress messages multi-step |
+1. **Generare assignment nou** — pentru a verifica ca:
+   - OpenAlex returneaza referinte reale
+   - Referintele sunt injectate in prompt
+   - GPTZero real scan functioneaza (nu Gemini)
+2. **Humanize** pe un assignment existent — pentru a verifica Undetectable.ai API
+3. **Deep Humanize** (targeted) — loop GPTZero + Undetectable.ai
 
-## Ordinea implementării
+## Plan de Actiune Recomandat
 
-1. Solicităm `UNDETECTABLE_API_KEY` de la user
-2. Creăm `fetch-references` edge function (OpenAlex)
-3. Actualizăm `generate-assignment` (multi-step + GPTZero real)
-4. Rescriem `humanize-text` (Undetectable.ai)
-5. Rescriem `targeted-humanize` (Undetectable.ai + GPTZero)
-6. Actualizăm UI (timeouts, labels, progress)
+### Prioritate 1 — Testare + Fix-uri critice
+1. Testeaza generare assignment end-to-end cu noile functii
+2. Testeaza Undetectable.ai humanization
+3. Fix `RevealSection` forwardRef warning
 
-## Impact
+### Prioritate 2 — Completari
+4. Adauga Google OAuth (daca dorit)
+5. Verifica Onboarding flow
+6. Seteaza React Router future flags
 
-- **Referințe**: Toate vor fi reale, verificabile — nu mai trebuie "validate references" post-factum
-- **AI detection la generare**: Scor GPTZero real, nu estimare Gemini
-- **Humanizare**: Undetectable.ai cu model v11sr — construit specific pentru bypass detectors
-- **Cost adițional**: Undetectable.ai plans de la ~$5/lună
+### Prioritate 3 — Scalabilitate
+7. Muta admin roles in tabel dedicat (in loc de email hardcodat)
+8. Adauga monitoring/alerting pentru edge function failures
+
+## Rezumat
+
+Platforma are o baza solida — structura DB, RLS, credit system, email queue, admin management toate sunt implementate corect. **Problema principala ramane AI detection**: codul nou (Undetectable.ai + OpenAlex + GPTZero real) este deployed dar **netestat**. Recomand testare imediata cu un assignment nou pentru a valida integrarea.
 
