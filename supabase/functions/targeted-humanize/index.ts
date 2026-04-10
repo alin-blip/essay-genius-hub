@@ -51,6 +51,7 @@ async function humanizeWithUndetectable(content: string, apiKey: string): Promis
       purpose: "Essay",
       strength: "More Human",
       model: "v11sr",
+      userId: "a78a2279-03da-4db4-9445-9fe23e659868",
     }),
   });
 

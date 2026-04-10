@@ -23,6 +23,7 @@ async function submitToUndetectable(content: string, apiKey: string): Promise<st
       purpose: "Essay",
       strength: "More Human",
       model: "v11sr",
+      userId: "a78a2279-03da-4db4-9445-9fe23e659868",
     }),
   });
 
