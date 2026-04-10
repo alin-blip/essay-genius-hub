@@ -323,7 +323,7 @@ const AssignmentEditor = () => {
       if (!accessToken) throw new Error("Not authenticated");
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000);
+      const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes for Undetectable.ai polling
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/targeted-humanize`,
@@ -578,11 +578,12 @@ const AssignmentEditor = () => {
             <CardContent className="p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Wand2 className="h-4 w-4 text-accent animate-pulse" />
-                <span className="text-sm font-medium text-foreground">Humanizing your assignment...</span>
+                <span className="text-sm font-medium text-foreground">AI bypass engine processing...</span>
               </div>
               <Progress value={humanizeProgress} className="h-2" />
               <p className="text-xs text-muted-foreground">
-                Rewriting for natural sentence variation, vocabulary changes, and anti-detection patterns
+                This may take 1-2 minutes — your text is being processed by a dedicated humanization engine
+              </p>
               </p>
             </CardContent>
           </Card>
