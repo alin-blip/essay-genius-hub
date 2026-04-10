@@ -363,6 +363,36 @@ export type Database = {
         }
         Relationships: []
       }
+      managed_students: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          invite_email: string
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          invite_email: string
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          invite_email?: string
+          status?: string
+          student_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           account_type: string
@@ -483,6 +513,10 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      is_admin_of: {
+        Args: { _admin_id: string; _student_id: string }
+        Returns: boolean
       }
       is_affiliate_of_user: {
         Args: { _affiliate_user_id: string; _referred_user_id: string }
