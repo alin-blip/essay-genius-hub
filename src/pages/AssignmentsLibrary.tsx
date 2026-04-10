@@ -1,14 +1,14 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { useEffect, useState, useMemo } from "react";
 import { Tables } from "@/integrations/supabase/types";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   FolderPlus, Folder, FolderOpen, FileText, Search, Trash2,
-  ChevronRight, MoreVertical, Pencil, ArrowLeft, Plus,
+  ChevronRight, MoreVertical, Pencil, ArrowLeft, Plus, Users,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -61,6 +61,10 @@ const FOLDER_COLORS = [
 export default function AssignmentsLibrary() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const studentId = searchParams.get("student");
+  const [studentName, setStudentName] = useState<string | null>(null);
+  const viewingUserId = studentId || user?.id;
 
   const [folders, setFolders] = useState<FolderRow[]>([]);
   const [assignments, setAssignments] = useState<Tables<"assignments">[]>([]);
@@ -83,13 +87,24 @@ export default function AssignmentsLibrary() {
   useEffect(() => {
     if (!user) return;
     fetchData();
-  }, [user]);
+    if (studentId) {
+      supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", studentId)
+        .maybeSingle()
+        .then(({ data }) => setStudentName(data?.full_name || "Student"));
+    } else {
+      setStudentName(null);
+    }
+  }, [user, studentId]);
 
   const fetchData = async () => {
+    if (!viewingUserId) return;
     setLoading(true);
     const [foldersRes, assignmentsRes] = await Promise.all([
-      supabase.from("folders" as any).select("*").eq("user_id", user!.id).order("name"),
-      supabase.from("assignments").select("*").eq("user_id", user!.id).order("created_at", { ascending: false }),
+      supabase.from("folders" as any).select("*").eq("user_id", viewingUserId).order("name"),
+      supabase.from("assignments").select("*").eq("user_id", viewingUserId).order("created_at", { ascending: false }),
     ]);
     if (foldersRes.data) setFolders(foldersRes.data as any as FolderRow[]);
     if (assignmentsRes.data) setAssignments(assignmentsRes.data);
@@ -130,7 +145,7 @@ export default function AssignmentsLibrary() {
       if (error) { toast.error("Failed to update folder"); return; }
       toast.success("Folder updated");
     } else {
-      const { error } = await supabase.from("folders" as any).insert({ name: folderName, color: folderColor, user_id: user.id, parent_id: currentFolderId } as any);
+      const { error } = await supabase.from("folders" as any).insert({ name: folderName, color: folderColor, user_id: viewingUserId, parent_id: currentFolderId } as any);
       if (error) { toast.error("Failed to create folder"); return; }
       toast.success("Folder created");
     }
@@ -196,7 +211,17 @@ export default function AssignmentsLibrary() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Assignments Library</h1>
+            {studentName && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                <Users className="h-4 w-4" />
+                <button onClick={() => navigate("/admin/students")} className="hover:underline">Students</button>
+                <ChevronRight className="h-3 w-3" />
+                <span className="font-medium text-foreground">{studentName}</span>
+              </div>
+            )}
+            <h1 className="text-2xl font-bold text-foreground">
+              {studentName ? `${studentName}'s Library` : "Assignments Library"}
+            </h1>
             <p className="text-sm text-muted-foreground">Organise your assignments into folders by module, subject, or student.</p>
           </div>
           <div className="flex gap-2">

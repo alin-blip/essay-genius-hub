@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard.tsx";
 import NewAssignment from "./pages/NewAssignment.tsx";
 import AssignmentEditor from "./pages/AssignmentEditor.tsx";
 import AdminDashboardPage from "./pages/AdminDashboard.tsx";
+import AdminStudents from "./pages/AdminStudents.tsx";
 import AssignmentsLibrary from "./pages/AssignmentsLibrary.tsx";
 import Settings from "./pages/Settings.tsx";
 import Plans from "./pages/Plans.tsx";
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/new-assignment" element={<ProtectedRoute><NewAssignment /></ProtectedRoute>} />
             <Route path="/assignment/:id" element={<ProtectedRoute><AssignmentEditor /></ProtectedRoute>} />
             <Route path="/admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="/admin/students" element={<ProtectedRoute><AdminStudents /></ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />

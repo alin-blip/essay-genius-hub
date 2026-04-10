@@ -6,6 +6,7 @@ import {
   Settings,
   LogOut,
   FolderOpen,
+  Users,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -39,7 +40,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, subscription } = useAuth();
 
   const handleLogout = async () => {
     await signOut();
@@ -70,6 +71,18 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Students item - visible for manager addon users */}
+              {subscription.hasManagerAddon && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === "/admin/students"}>
+                    <NavLink to="/admin/students" className="hover:bg-muted/50" activeClassName="bg-muted text-primary font-medium">
+                      <Users className="h-4 w-4" />
+                      {!collapsed && <span>Students</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {/* Manager upsell item */}
               <SidebarMenuItem>
