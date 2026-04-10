@@ -157,10 +157,54 @@ serve(async (req) => {
     const sessionSeed = crypto.randomUUID() + "-" + Date.now();
     const creditsBefore = profile.credits_balance;
 
-    // Build the system prompt — target word count with tight ±5% tolerance
+    // Step 1: Fetch real academic references from OpenAlex
+    let realReferences: Array<{ harvard: string; in_text: string }> = [];
+    try {
+      const refResponse = await fetch(
+        `${supabaseUrl}/functions/v1/fetch-references`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: authHeader,
+            apikey: supabaseKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            topic: title,
+            brief: assignment_brief || "",
+            count: Math.max(10, Math.ceil(word_count / 300)),
+          }),
+        }
+      );
+      if (refResponse.ok) {
+        const refData = await refResponse.json();
+        realReferences = refData.references || [];
+        console.log(`Fetched ${realReferences.length} real references from OpenAlex`);
+      }
+    } catch (e) {
+      console.error("Failed to fetch references:", e);
+    }
+
+    // Build the system prompt
     const targetWords = word_count;
     const gradeInstruction = GRADE_INSTRUCTIONS[target_grade] || GRADE_INSTRUCTIONS.merit;
     const structureInstruction = TYPE_STRUCTURES[assignment_type] || TYPE_STRUCTURES.essay;
+
+    // Build references instruction with real sources
+    const referencesInstruction = realReferences.length > 0
+      ? `Use ONLY these real academic references throughout. You MUST cite them using Harvard style.
+Here are your references — use at least ${Math.min(realReferences.length, 8)} of them:
+
+REFERENCE LIST:
+${realReferences.map((r: any) => r.harvard).join("\n")}
+
+IN-TEXT CITATION FORMATS:
+${realReferences.map((r: any) => r.in_text).join(", ")}
+
+Include the full reference list at the end of your assignment.`
+      : include_harvard_refs
+      ? `Use Harvard referencing style throughout. Mix of recent (2019-2025) and older seminal works. Aim for ${Math.max(10, Math.ceil(word_count / 300))} references minimum.`
+      : "Do not include formal referencing.";
 
     const systemPrompt = `You are a real UK university student writing your own assignment. You are NOT an AI assistant — you are a human student who sometimes struggles with wording, occasionally repeats yourself, and writes the way real people do.
 
