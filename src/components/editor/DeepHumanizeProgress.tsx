@@ -88,7 +88,7 @@ const DeepHumanizeProgress = ({
 
         {isRunning && (
           <p className="text-xs text-muted-foreground">
-            Targeting only AI-flagged sentences for rewriting...
+            AI bypass engine processing — this may take 1-2 minutes per pass...
           </p>
         )}
 

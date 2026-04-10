@@ -7,33 +7,84 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const REWRITE_PROMPT = `You are an expert academic editor helping a UK university student make their writing sound more natural and human.
-
-TASK: Rewrite ONLY the specific sentences provided below. Each sentence is numbered. Return the rewritten versions in the SAME order, one per line, prefixed with the same number.
-
-RULES:
-- Keep the exact same meaning and academic content
-- Vary sentence length — mix short punchy sentences with longer ones
-- Use natural student vocabulary, not overly formal or robotic language
-- Add occasional contractions (it's, doesn't, won't) where appropriate
-- Break uniform sentence patterns — don't start consecutive sentences the same way
-- Use active voice more than passive where possible
-- Add transitional phrases that feel natural (honestly, in practice, interestingly)
-- Maintain academic rigour — don't dumb it down, just make it sound human
-- Do NOT add or remove information
-- Do NOT change technical terms or proper nouns
-- Each rewritten sentence must be on its own line, prefixed with the number
-
-CONTEXT (for coherence, do NOT rewrite this):
-"""
-{context}
-"""
-
-SENTENCES TO REWRITE:
-{sentences}`;
-
 const MAX_PASSES = 3;
 const TARGET_SCORE = 15;
+const POLL_INTERVAL_MS = 7000;
+const MAX_POLL_ATTEMPTS = 25;
+
+async function scanWithGPTZero(content: string, apiKey: string) {
+  const response = await fetch("https://api.gptzero.me/v2/predict/text", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ document: content }),
+  });
+
+  if (!response.ok) {
+    if (response.status === 429) return { score: null, rateLimited: true };
+    throw new Error(`GPTZero error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const doc = data.documents?.[0];
+  if (!doc) return { score: null, rateLimited: false };
+
+  return {
+    score: Math.round((doc.completely_generated_prob ?? 0) * 100),
+    rateLimited: false,
+  };
+}
+
+async function humanizeWithUndetectable(content: string, apiKey: string): Promise<string> {
+  // Submit
+  const submitRes = await fetch("https://humanize.undetectable.ai/submit", {
+    method: "POST",
+    headers: {
+      apikey: apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      content,
+      readability: "University",
+      purpose: "Essay",
+      strength: "More Human",
+      model: "v11sr",
+    }),
+  });
+
+  if (!submitRes.ok) {
+    const errText = await submitRes.text();
+    if (submitRes.status === 400) throw new Error("Insufficient Undetectable.ai credits");
+    throw new Error(`Undetectable.ai submit failed (${submitRes.status}): ${errText}`);
+  }
+
+  const submitData = await submitRes.json();
+  const docId = submitData.id;
+  if (!docId) throw new Error("No document ID from Undetectable.ai");
+
+  // Poll
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+
+    const pollRes = await fetch("https://humanize.undetectable.ai/document", {
+      method: "POST",
+      headers: {
+        apikey: apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: docId }),
+    });
+
+    if (!pollRes.ok) continue;
+
+    const pollData = await pollRes.json();
+    if (pollData.output) return pollData.output;
+  }
+
+  throw new Error("Humanization timed out");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -92,10 +143,10 @@ serve(async (req) => {
       throw new Error("GPTZERO_API_KEY not configured");
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const UNDETECTABLE_API_KEY = Deno.env.get("UNDETECTABLE_API_KEY");
+    if (!UNDETECTABLE_API_KEY) {
       await supabaseClient.rpc("restore_credits", { p_user_id: userId, p_amount: creditCost });
-      throw new Error("AI API key not configured");
+      throw new Error("Humanization service not configured");
     }
 
     let currentContent = content;
@@ -107,31 +158,14 @@ serve(async (req) => {
     }> = [];
 
     for (let pass = 1; pass <= MAX_PASSES; pass++) {
-      // Step 1: GPTZero scan
-      const gptZeroRes = await fetch("https://api.gptzero.me/v2/predict/text", {
-        method: "POST",
-        headers: {
-          "x-api-key": GPTZERO_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ document: currentContent }),
-      });
+      // Step 1: GPTZero scan to get initial score
+      const scanResult = await scanWithGPTZero(currentContent, GPTZERO_API_KEY);
+      if (scanResult.rateLimited) break;
+      if (scanResult.score === null) break;
 
-      if (!gptZeroRes.ok) {
-        if (gptZeroRes.status === 429) {
-          // Rate limited — return what we have so far
-          break;
-        }
-        throw new Error(`GPTZero error: ${gptZeroRes.status}`);
-      }
+      const scoreBefore = scanResult.score;
 
-      const gptData = await gptZeroRes.json();
-      const doc = gptData.documents?.[0];
-      if (!doc) break;
-
-      const scoreBefore = Math.round((doc.completely_generated_prob ?? 0) * 100);
-
-      // Check if already below target
+      // Already below target
       if (scoreBefore <= TARGET_SCORE) {
         passResults.push({
           pass,
@@ -142,124 +176,35 @@ serve(async (req) => {
         break;
       }
 
-      // Step 2: Find flagged sentences
-      const sentences = (doc.sentences ?? []) as Array<{
-        sentence: string;
-        generated_prob: number;
-        highlight_sentence_for_ai: boolean;
-      }>;
+      // Step 2: Send full content to Undetectable.ai for humanization
+      console.log(`Pass ${pass}: score=${scoreBefore}%, sending to Undetectable.ai...`);
+      const humanizedContent = await humanizeWithUndetectable(currentContent, UNDETECTABLE_API_KEY);
+      
+      // Count approximate changes
+      const originalWords = currentContent.split(/\s+/);
+      const humanizedWords = humanizedContent.split(/\s+/);
+      const changedWords = originalWords.filter((w, i) => humanizedWords[i] !== w).length;
+      const sentencesRewritten = Math.max(1, Math.round(changedWords / 15));
 
-      const flagged = sentences.filter(
-        (s) => s.generated_prob > 0.5 || s.highlight_sentence_for_ai
-      );
+      currentContent = humanizedContent;
 
-      if (flagged.length === 0) break;
-
-      // Step 3: Build prompt with numbered sentences
-      const numberedSentences = flagged
-        .map((s, i) => `${i + 1}. ${s.sentence}`)
-        .join("\n");
-
-      // Use a snippet of the full text as context (first 500 chars + last 500 chars)
-      const contextSnippet =
-        currentContent.length > 1200
-          ? currentContent.slice(0, 600) + "\n...\n" + currentContent.slice(-600)
-          : currentContent;
-
-      const prompt = REWRITE_PROMPT
-        .replace("{context}", contextSnippet)
-        .replace("{sentences}", numberedSentences);
-
-      // Step 4: Call AI to rewrite
-      const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "openai/gpt-5",
-          messages: [
-            { role: "system", content: "You are an expert academic rewriter. Follow instructions exactly." },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.85,
-          max_tokens: 4000,
-        }),
-      });
-
-      if (!aiRes.ok) {
-        console.error("AI rewrite failed:", aiRes.status);
-        break;
-      }
-
-      const aiData = await aiRes.json();
-      const rewrittenText = aiData.choices?.[0]?.message?.content?.trim();
-      if (!rewrittenText) break;
-
-      // Step 5: Parse numbered responses and splice back
-      const rewrittenLines = rewrittenText.split("\n").filter((l: string) => l.trim());
-      const rewrittenMap = new Map<number, string>();
-
-      for (const line of rewrittenLines) {
-        const match = line.match(/^(\d+)\.\s*(.+)$/);
-        if (match) {
-          rewrittenMap.set(parseInt(match[1]), match[2].trim());
-        }
-      }
-
-      let updatedContent = currentContent;
-      let replacedCount = 0;
-
-      for (let i = 0; i < flagged.length; i++) {
-        const rewritten = rewrittenMap.get(i + 1);
-        if (rewritten && rewritten !== flagged[i].sentence) {
-          // Simple string replacement — replace first occurrence
-          const idx = updatedContent.indexOf(flagged[i].sentence);
-          if (idx !== -1) {
-            updatedContent =
-              updatedContent.slice(0, idx) +
-              rewritten +
-              updatedContent.slice(idx + flagged[i].sentence.length);
-            replacedCount++;
-          }
-        }
-      }
-
-      if (replacedCount === 0) break;
-
-      currentContent = updatedContent;
-
-      // Step 6: Re-scan to get score_after (only if not last pass)
+      // Step 3: Re-scan with GPTZero to verify
       let scoreAfter = scoreBefore;
-      if (pass < MAX_PASSES) {
-        try {
-          const recheck = await fetch("https://api.gptzero.me/v2/predict/text", {
-            method: "POST",
-            headers: {
-              "x-api-key": GPTZERO_API_KEY,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ document: currentContent }),
-          });
-          if (recheck.ok) {
-            const recheckData = await recheck.json();
-            const recheckDoc = recheckData.documents?.[0];
-            if (recheckDoc) {
-              scoreAfter = Math.round((recheckDoc.completely_generated_prob ?? 0) * 100);
-            }
-          }
-        } catch {
-          // Continue anyway
-        }
+      try {
+        const rescan = await scanWithGPTZero(currentContent, GPTZERO_API_KEY);
+        if (rescan.score !== null) scoreAfter = rescan.score;
+      } catch {
+        // Continue anyway
       }
 
       passResults.push({
         pass,
         score_before: scoreBefore,
         score_after: scoreAfter,
-        sentences_rewritten: replacedCount,
+        sentences_rewritten: sentencesRewritten,
       });
+
+      console.log(`Pass ${pass} complete: ${scoreBefore}% → ${scoreAfter}%`);
 
       if (scoreAfter <= TARGET_SCORE) break;
     }
@@ -271,7 +216,6 @@ serve(async (req) => {
       .eq("id", assignment_id);
 
     if (saveError) {
-      // Refund on save failure
       await supabaseClient.rpc("restore_credits", { p_user_id: userId, p_amount: creditCost });
       throw new Error("Failed to save humanized content");
     }

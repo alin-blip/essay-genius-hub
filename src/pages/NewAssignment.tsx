@@ -49,13 +49,13 @@ const GRADES = [
 
 const PROGRESS_MESSAGES = [
   "Analysing assignment brief...",
-  "Researching relevant academic sources...",
+  "Fetching real academic sources from research databases...",
   "Structuring your assignment...",
   "Writing introduction and key arguments...",
-  "Developing critical analysis...",
-  "Adding Harvard references...",
+  "Developing critical analysis with real references...",
+  "Adding Harvard citations from verified sources...",
   "Refining academic tone and style...",
-  "Applying quality enhancement...",
+  "Running AI detection scan (GPTZero)...",
   "Finalising your assignment...",
 ];
 

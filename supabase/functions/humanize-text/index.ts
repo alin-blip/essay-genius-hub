@@ -7,71 +7,62 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const HUMANIZE_PROMPT = `You are a skilled academic editor helping a university student polish their draft. The text already makes good arguments — your job is to make it read like a confident, capable student wrote it naturally, not like AI generated it.
+const POLL_INTERVAL_MS = 7000;
+const MAX_POLL_ATTEMPTS = 25; // ~175 seconds max
 
-## CORE PRINCIPLE
-Make minimal, surgical changes. Do NOT rewrite from scratch. Preserve the structure, arguments, and academic quality. You are polishing, not demolishing.
+async function submitToUndetectable(content: string, apiKey: string): Promise<string> {
+  const response = await fetch("https://humanize.undetectable.ai/submit", {
+    method: "POST",
+    headers: {
+      apikey: apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      content,
+      readability: "University",
+      purpose: "Essay",
+      strength: "More Human",
+      model: "v11sr",
+    }),
+  });
 
-## STEP 1: VOCABULARY CLEANUP (mandatory substitutions)
-Replace these AI-signature words wherever they appear:
-- "utilize/utilise" → "use"
-- "demonstrate" → "show" or "suggest"
-- "facilitate" → "help" or "support"
-- "implement" → "carry out" or "apply"
-- "subsequently" → "then" or "after this"
-- "furthermore" → "also" or "additionally"
-- "consequently" → "so" or "as a result"
-- "nevertheless" → "still" or "however"
-- "comprehensive" → "thorough" or "detailed"
-- "significant" → "notable" or "important"
-- "fundamental" → "key" or "core"
-- "multifaceted" → remove or rephrase simply
-- "delve" → "examine" or "explore"
-- "tapestry" → remove metaphor, state plainly
-- "pivotal" → "important" or "key"
-- "groundbreaking" → "important" or "notable"
-- "it is important to note that" → remove entirely, just state the point
-- "it should be noted that" → remove entirely
-- "it is worth mentioning" → remove entirely
-- "in conclusion" at paragraph starts → vary: "Overall", "To summarise", "Taking this together", or just start the concluding point directly
-- "plays a crucial role" → "matters" or "is important"
-- "in the context of" → "for" or "in"
+  if (!response.ok) {
+    const errText = await response.text();
+    if (response.status === 400) throw new Error("Insufficient Undetectable.ai credits");
+    throw new Error(`Undetectable.ai submit failed (${response.status}): ${errText}`);
+  }
 
-## STEP 2: SENTENCE RHYTHM (burstiness)
-AI writes sentences of similar length. Fix this:
-- If you see 3+ sentences in a row of similar length (15-25 words each), break the pattern
-- Split one long sentence into two shorter ones, OR combine two short ones with a comma or dash
-- Aim for a mix: some sentences 8-12 words, some 20-30 words, within each paragraph
-- Do NOT add sentence fragments or incomplete thoughts
+  const data = await response.json();
+  if (!data.id) throw new Error("No document ID returned from Undetectable.ai");
+  return data.id;
+}
 
-## STEP 3: NATURAL ACADEMIC VOICE
-- Add contractions where natural: "does not" → "doesn't", "it is" → "it's", "cannot" → "can't"
-- But keep some formal phrasing — not every instance needs contracting
-- Move 2-3 citations from sentence-end to mid-sentence: "X (Author, Year) is evident in..." 
-- Occasionally name authors in text: "As Smith (2021) argues..." instead of just "(Smith, 2021)"
-- Vary paragraph openings — if 3 paragraphs start with "The" or "This", change one to start differently
+async function pollForResult(docId: string, apiKey: string): Promise<string> {
+  for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
 
-## STEP 4: SUBTLE IMPERFECTIONS
-- Add 1-2 em dashes per 500 words for parenthetical thoughts
-- Use "arguably" or "to some extent" as hedges (max 2 per 1000 words)
-- One or two sentences can start with "And" or "But" — but sparingly
-- Keep tone confident and academic throughout — this is a strong student, not a sloppy one
+    const response = await fetch("https://humanize.undetectable.ai/document", {
+      method: "POST",
+      headers: {
+        apikey: apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id: docId }),
+    });
 
-## ABSOLUTE RULES — DO NOT BREAK
-- Keep ALL Harvard references exactly as written — every single citation must remain
-- Keep ALL factual claims, data, statistics unchanged
-- Keep the overall argument, structure, and conclusion identical
-- Keep British English spelling
-- Keep markdown formatting (headings, bold, lists)
-- Keep the same word count (±5% maximum)
-- Do NOT add rhetorical questions
-- Do NOT add digressions or off-topic asides
-- Do NOT add "false starts" or self-corrections
-- Do NOT use "kind of", "sort of" — too informal for academic writing
-- Do NOT add personal anecdotes or first-person commentary unless already present
+    if (!response.ok) {
+      console.error("Poll error:", response.status);
+      continue;
+    }
 
-## OUTPUT
-Return ONLY the polished text. No explanations, no commentary, no preamble.`;
+    const data = await response.json();
+    if (data.output) {
+      return data.output;
+    }
+    // No output yet — still processing
+  }
+  throw new Error("Humanization timed out after ~175 seconds");
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -129,7 +120,7 @@ serve(async (req) => {
       });
     }
 
-    // Check credits (humanization costs half of generation)
+    // Check credits
     const { data: profile } = await supabase
       .from("profiles")
       .select("credits_balance")
@@ -144,48 +135,28 @@ serve(async (req) => {
       });
     }
 
-    // Call Lovable AI
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      return new Response(JSON.stringify({ error: "AI service not configured" }), {
+    // Check for Undetectable.ai API key
+    const UNDETECTABLE_API_KEY = Deno.env.get("UNDETECTABLE_API_KEY");
+    if (!UNDETECTABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "Humanization service not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
-        messages: [
-          { role: "system", content: HUMANIZE_PROMPT },
-          { role: "user", content: `Rewrite this academic text so AI detectors score it below 15%. You are a student rewriting your own draft because it sounded too robotic. Keep all references, arguments, facts, and the same word count. Make it sound like YOU wrote it — messy, human, real:\n\n${content}` },
-        ],
-      }),
-    });
+    // Submit to Undetectable.ai
+    console.log(`Submitting ${content.length} chars to Undetectable.ai for assignment ${assignment_id}`);
+    const docId = await submitToUndetectable(content, UNDETECTABLE_API_KEY);
+    console.log(`Document submitted, ID: ${docId}. Polling for result...`);
 
-    if (!aiResponse.ok) {
-      console.error("AI gateway error:", aiResponse.status);
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "AI service is busy. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ error: "Failed to humanize text" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const aiData = await aiResponse.json();
-    const humanizedContent = aiData.choices?.[0]?.message?.content;
+    // Poll for result
+    const humanizedContent = await pollForResult(docId, UNDETECTABLE_API_KEY);
+    console.log(`Humanization complete. Output length: ${humanizedContent.length}`);
 
     if (!humanizedContent) {
-      return new Response(JSON.stringify({ error: "No content generated" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      return new Response(JSON.stringify({ error: "No content returned from humanization service" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
@@ -199,7 +170,8 @@ serve(async (req) => {
     if (updateError) {
       console.error("Update error:", updateError);
       return new Response(JSON.stringify({ error: "Failed to save humanized content" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
