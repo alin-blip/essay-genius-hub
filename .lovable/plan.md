@@ -1,92 +1,101 @@
 
 
-# Administrator-Student Account Management System
+# Plan Hybrid: Undetectable.ai + Surse Reale OpenAlex + GPTZero Real Scan
 
-## Overview
+## Problema actuală
 
-Administrators (agents with Manager Add-on) can invite students and get full access to their folders and assignments. An admin can manage unlimited students from a dedicated dashboard.
+1. **Humanizarea** folosește GPT-5 care tot produce pattern-uri detectabile de GPTZero
+2. **Auto-check AI detection** la generare folosește Gemini ca "meta-detector" — inexact, nu reflectă scorul real GPTZero
+3. **Referințele** sunt fabricate de AI — Crossref validarea post-factum nu le face reale
 
-## Data Model
+## Ce schimbăm
 
-**New table: `managed_students`**
-```text
-id          UUID PK
-admin_id    UUID (references auth.users)
-student_id  UUID (references auth.users, nullable — filled on accept)
-invite_email TEXT NOT NULL
-status      TEXT DEFAULT 'pending' (pending | accepted | revoked)
-created_at  TIMESTAMPTZ
-updated_at  TIMESTAMPTZ
-```
+### 1. Secret nou: `UNDETECTABLE_API_KEY`
+- Userul trebuie să-și ia API key de la https://undetectable.ai/develop
+- Se adaugă ca secret în proiect
 
-RLS policies:
-- Admins can SELECT/INSERT/UPDATE/DELETE their own rows (WHERE admin_id = auth.uid())
-- Students can SELECT rows where student_id = auth.uid()
-- Students can UPDATE (accept invite) where invite_email matches their email
-
-**New DB function: `is_admin_of(admin_uid, student_uid)`** — SECURITY DEFINER, used in RLS policies on `assignments` and `folders` to allow admin access without recursion.
-
-**Updated RLS on `assignments` and `folders`:**
-- Add SELECT/UPDATE/DELETE policies: `auth.uid() = user_id OR is_admin_of(auth.uid(), user_id)`
-- This gives admins full access to their students' data
-
-## Flow
+### 2. Edge function `humanize-text/index.ts` — rescriere completă
+Înlocuim call-ul la Lovable AI cu Undetectable.ai API (submit/poll pattern):
 
 ```text
-Admin clicks "Add Student" → enters student email
-  │
-  ├─► Row created in managed_students (status: pending)
-  ├─► Transactional email sent to student with invite link
-  │
-  Student logs in → sees pending invite banner
-  │
-  ├─► Clicks "Accept" → status changes to accepted, student_id filled
-  │
-  Admin dashboard now shows student's folders & assignments
+POST https://humanize.undetectable.ai/submit
+  { content, readability: "University", purpose: "Essay", strength: "More Human", model: "v11sr" }
+  → returns { id }
+
+Poll every 7s:
+POST https://humanize.undetectable.ai/document
+  { id }
+  → until output exists (timeout 120s)
 ```
 
-## UI Changes
+Parametrii: readability=University, purpose=Essay, strength="More Human", model="v11sr" (best humanization).
 
-### A. New page: `AdminStudents.tsx` (`/admin/students`)
-- List of managed students (name, email, status, date added)
-- "Add Student" button → dialog with email input
-- Click a student → navigate to their Library view (filtered)
-- Revoke access button per student
+### 3. Edge function `targeted-humanize/index.ts` — simplificare
+Actuala logică GPTZero scan → rewrite cu GPT-5 se înlocuiește cu:
+- GPTZero scan pentru scorul inițial
+- Trimite tot conținutul la Undetectable.ai (nu doar propozițiile flagged — API-ul lor decide ce rescrie)
+- GPTZero re-scan pentru confirmare
+- Returnează pass results ca înainte
 
-### B. Student invite banner (`InviteBanner.tsx`)
-- Shown at top of Dashboard when student has a pending invite
-- "Admin X wants to manage your account" → Accept / Decline buttons
+### 4. Auto-check din `generate-assignment/index.ts` — GPTZero real
+Înlocuim blocul Gemini "meta-detector" (liniile 346-394) cu un scan GPTZero real:
+```text
+POST https://api.gptzero.me/v2/predict/text
+  { document: generatedContent }
+  → overall_score, human_score, sentences
+```
+Asta dă feedback precis direct la generare.
 
-### C. Library page update
-- When admin views a student's library, show breadcrumb: "Students > [Name] > Library"
-- Admin can switch between their own library and student libraries
+### 5. Retrieval surse reale — nou: `fetch-references/index.ts`
+Edge function nouă care caută surse academice reale din OpenAlex (gratuit, fără API key):
+```text
+GET https://api.openalex.org/works?search={topic}&filter=publication_year:2019-2025&per_page=20&mailto=support@assignmentpro.uk
+```
+- Se apelează ÎNAINTE de generarea assignment-ului
+- Returnează titluri, autori, an, DOI, journal
+- Referințele reale se includ în prompt-ul de generare ca "MUST USE these references"
 
-### D. Sidebar update
-- Add "Students" nav item (only visible for users with `has_manager_addon = true`)
-- Icon: Users
+### 6. Update `generate-assignment/index.ts` — multi-step cu surse reale
+Fluxul devine:
+```text
+Step 1: Call fetch-references cu titlul + brief → lista de surse reale
+Step 2: Injectează sursele în system prompt: "Use ONLY these real references: [...]"
+Step 3: Generează assignment-ul cu GPT-5 (cum e acum)
+Step 4: GPTZero scan real pentru AI detection score
+Step 5: Similarity check (cum e acum)
+```
 
-### E. AssignmentEditor access
-- Already protected by RLS — once policies are updated, admin can view student assignments via direct URL
-- Add "Managed by [Admin Name]" badge when student views their own assignment that's being managed
+### 7. UI updates
+- `AssignmentEditor.tsx`: timeout humanize mărit la 150s, mesaje progress actualizate
+- `DeepHumanizeProgress.tsx`: labels actualizate ("AI bypass engine" în loc de "rewriting")
+- `NewAssignment.tsx`: progress messages actualizate pentru multi-step
 
-## Files to Create/Modify
+## Fișiere de creat/modificat
 
-| File | Change |
-|------|--------|
-| Migration SQL | New `managed_students` table, `is_admin_of()` function, updated RLS on assignments + folders |
-| `src/pages/AdminStudents.tsx` | **New** — student management dashboard for admins |
-| `src/components/InviteBanner.tsx` | **New** — pending invite banner for students |
-| `src/pages/AssignmentsLibrary.tsx` | Support viewing a specific student's library (via query param or route) |
-| `src/components/AppSidebar.tsx` | Add "Students" nav item for manager addon users |
-| `src/App.tsx` | Add `/admin/students` route |
-| `src/pages/Dashboard.tsx` | Show InviteBanner for pending invites |
-| `supabase/functions/send-transactional-email` | Add invite email template |
-| Email template | **New** `student-invite.tsx` template |
+| Fișier | Schimbare |
+|--------|-----------|
+| **Secret** `UNDETECTABLE_API_KEY` | Nou — solicitat userului |
+| `supabase/functions/humanize-text/index.ts` | Rescriere — Undetectable.ai submit/poll |
+| `supabase/functions/targeted-humanize/index.ts` | Rescriere — Undetectable.ai + GPTZero |
+| `supabase/functions/fetch-references/index.ts` | **Nou** — OpenAlex API search |
+| `supabase/functions/generate-assignment/index.ts` | Multi-step: fetch refs → generate → GPTZero real scan |
+| `src/pages/AssignmentEditor.tsx` | Timeout + progress messages |
+| `src/components/editor/DeepHumanizeProgress.tsx` | Labels |
+| `src/pages/NewAssignment.tsx` | Progress messages multi-step |
 
-## Security
+## Ordinea implementării
 
-- `is_admin_of()` is SECURITY DEFINER to avoid RLS recursion
-- Students must explicitly accept invites — no silent access
-- Admin can only access students who accepted their invite
-- Revoking access immediately removes all RLS grants
+1. Solicităm `UNDETECTABLE_API_KEY` de la user
+2. Creăm `fetch-references` edge function (OpenAlex)
+3. Actualizăm `generate-assignment` (multi-step + GPTZero real)
+4. Rescriem `humanize-text` (Undetectable.ai)
+5. Rescriem `targeted-humanize` (Undetectable.ai + GPTZero)
+6. Actualizăm UI (timeouts, labels, progress)
+
+## Impact
+
+- **Referințe**: Toate vor fi reale, verificabile — nu mai trebuie "validate references" post-factum
+- **AI detection la generare**: Scor GPTZero real, nu estimare Gemini
+- **Humanizare**: Undetectable.ai cu model v11sr — construit specific pentru bypass detectors
+- **Cost adițional**: Undetectable.ai plans de la ~$5/lună
 
