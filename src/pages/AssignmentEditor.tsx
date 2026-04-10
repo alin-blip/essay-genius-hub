@@ -20,7 +20,6 @@ import {
   LetterText,
   FileType,
   Save,
-  Bot,
   Zap,
   Square,
 } from "lucide-react";
@@ -57,33 +56,25 @@ const AssignmentEditor = () => {
   const [assignment, setAssignment] = useState<Tables<"assignments"> | null>(null);
   const [loading, setLoading] = useState(true);
   const [humanizing, setHumanizing] = useState(false);
-  const [humanizeProgress, setHumanizeProgress] = useState(0);
+  const [humanizePass, setHumanizePass] = useState(0);
+  const [humanizePasses, setHumanizePasses] = useState<PassResult[]>([]);
   const [copied, setCopied] = useState(false);
   const [showHumanized, setShowHumanized] = useState(false);
   const [editedContent, setEditedContent] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [autoHumanizing, setAutoHumanizing] = useState(false);
-  const [autoHumanizePass, setAutoHumanizePass] = useState(0);
-  const [autoHumanizeScore, setAutoHumanizeScore] = useState<number | null>(null);
-  const [autoHumanizeTotalCredits, setAutoHumanizeTotalCredits] = useState(0);
   const [detectionSentences, setDetectionSentences] = useState<SentenceAnalysis[]>([]);
   const [showAiHighlights, setShowAiHighlights] = useState(false);
-  const [deepHumanizing, setDeepHumanizing] = useState(false);
-  const [deepHumanizePass, setDeepHumanizePass] = useState(0);
-  const [deepHumanizePasses, setDeepHumanizePasses] = useState<PassResult[]>([]);
-  const [showDeepConfirm, setShowDeepConfirm] = useState(false);
+  const [showHumanizeConfirm, setShowHumanizeConfirm] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
-  const stopAutoHumanizeRef = useRef(false);
-  const stopDeepHumanizeRef = useRef(false);
+  const stopHumanizeRef = useRef(false);
 
   const [adminName, setAdminName] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !id) return;
-    // RLS allows both owner and admin access, so don't filter by user_id
     supabase
       .from("assignments")
       .select("*")
@@ -98,7 +89,6 @@ const AssignmentEditor = () => {
         if (data.humanized_content) setShowHumanized(true);
         setLoading(false);
 
-        // If current user is the owner, check if managed by an admin
         if (data.user_id === user.id) {
           supabase
             .from("managed_students")
@@ -173,7 +163,6 @@ const AssignmentEditor = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      // Replace selected text with regenerated text
       if (activeContent && data.regenerated_text) {
         const newContent = activeContent.replace(selectedText, data.regenerated_text);
         setEditedContent(newContent);
@@ -196,126 +185,11 @@ const AssignmentEditor = () => {
   };
 
   const handleHumanize = async () => {
-    if (!assignment?.generated_content || !id) return;
-    setHumanizing(true);
-    setHumanizeProgress(0);
-    const interval = setInterval(() => {
-      setHumanizeProgress((p) => Math.min(p + Math.random() * 10 + 3, 90));
-    }, 1500);
-    try {
-      const { data, error } = await supabase.functions.invoke("humanize-text", {
-        body: { assignment_id: id, content: assignment.generated_content },
-      });
-      clearInterval(interval);
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-      setHumanizeProgress(100);
-      setTimeout(() => {
-        setAssignment((prev) => (prev ? { ...prev, humanized_content: data.humanized_content } : prev));
-        setShowHumanized(true);
-        setEditedContent(null);
-        setHasChanges(false);
-        setHumanizing(false);
-        toast({
-          title: "Text Humanized! ✨",
-          description: `${data.credits_used} credits used. ${data.credits_remaining} remaining.`,
-        });
-      }, 500);
-    } catch (err: any) {
-      clearInterval(interval);
-      setHumanizing(false);
-      toast({ title: "Humanization Failed", description: err.message, variant: "destructive" });
-    }
-  };
-
-  const handleAutoHumanize = async () => {
-    if (!assignment?.generated_content || !id) return;
-    setAutoHumanizing(true);
-    setAutoHumanizePass(0);
-    setAutoHumanizeScore(null);
-    setAutoHumanizeTotalCredits(0);
-    stopAutoHumanizeRef.current = false;
-
-    let currentContent = activeContent || assignment.generated_content;
-    let currentScore = 100;
-    let totalCredits = 0;
-    let creditsRemaining = 0;
-    let passCount = 0;
-
-    for (let pass = 1; pass <= MAX_PASSES; pass++) {
-      if (stopAutoHumanizeRef.current) break;
-      
-      setAutoHumanizePass(pass);
-      passCount = pass;
-
-      // Step 1: Humanize
-      try {
-        const { data: humData, error: humError } = await supabase.functions.invoke("humanize-text", {
-          body: { assignment_id: id, content: currentContent },
-        });
-        if (humError) throw humError;
-        if (humData?.error) throw new Error(humData.error);
-        
-        currentContent = humData.humanized_content;
-        totalCredits += humData.credits_used || 0;
-        creditsRemaining = humData.credits_remaining || 0;
-        setAutoHumanizeTotalCredits(totalCredits);
-      } catch (err: any) {
-        setAutoHumanizing(false);
-        toast({ title: "Auto-Humanize Failed", description: err.message, variant: "destructive" });
-        return;
-      }
-
-      if (stopAutoHumanizeRef.current) break;
-
-      // Step 2: Check AI detection
-      try {
-        const { data: detData, error: detError } = await supabase.functions.invoke("check-ai-detection", {
-          body: { content: currentContent, assignment_id: id },
-        });
-        if (detError) throw detError;
-        if (detData?.error) throw new Error(detData.error);
-        
-        currentScore = detData.overall_score ?? 50;
-        setAutoHumanizeScore(currentScore);
-      } catch {
-        currentScore = 0;
-      }
-
-      if (currentScore <= TARGET_SCORE) break;
-    }
-
-    // Save the final result
-    const { error: saveError } = await supabase
-      .from("assignments")
-      .update({ humanized_content: currentContent } as any)
-      .eq("id", id);
-
-    if (!saveError) {
-      setAssignment((prev) => (prev ? { ...prev, humanized_content: currentContent } : prev));
-      setShowHumanized(true);
-      setEditedContent(null);
-      setHasChanges(false);
-    }
-
-    setAutoHumanizing(false);
-    const wasStopped = stopAutoHumanizeRef.current;
-    toast({
-      title: currentScore <= TARGET_SCORE ? "Auto-Humanize Complete! ✨" : wasStopped ? "Auto-Humanize Stopped" : `Auto-Humanize Done (Score: ${currentScore}%)`,
-      description: `${totalCredits} credits used across ${passCount} pass${passCount > 1 ? "es" : ""}. ${creditsRemaining} remaining.`,
-    });
-  };
-
-  const handleStopAutoHumanize = useCallback(() => {
-    stopAutoHumanizeRef.current = true;
-  }, []);
-
-  const handleDeepHumanize = async () => {
     if (!id || !activeContent) return;
-    setDeepHumanizing(true);
-    setDeepHumanizePass(1);
-    setDeepHumanizePasses([]);
-    stopDeepHumanizeRef.current = false;
+    setHumanizing(true);
+    setHumanizePass(1);
+    setHumanizePasses([]);
+    stopHumanizeRef.current = false;
 
     try {
       const session = await supabase.auth.getSession();
@@ -323,7 +197,7 @@ const AssignmentEditor = () => {
       if (!accessToken) throw new Error("Not authenticated");
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 minutes for Undetectable.ai polling
+      const timeoutId = setTimeout(() => controller.abort(), 600000);
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/targeted-humanize`,
@@ -341,10 +215,30 @@ const AssignmentEditor = () => {
       clearTimeout(timeoutId);
 
       const data = await response.json();
-      if (!response.ok || data.error) throw new Error(data.error || "Deep humanize failed");
+      if (!response.ok || data.error) throw new Error(data.error || "Humanization failed");
 
-      setDeepHumanizePasses(data.passes || []);
-      setDeepHumanizePass(data.passes?.length || MAX_PASSES);
+      setHumanizePasses(data.passes || []);
+      setHumanizePass(data.passes?.length || MAX_PASSES);
+
+      // Update generation_metadata with new AI scores
+      const finalScore = data.final_score;
+      if (finalScore != null && assignment?.generation_metadata) {
+        const updatedMetadata = {
+          ...(assignment.generation_metadata as any),
+          ai_detection: {
+            overall_score: finalScore,
+            human_score: 100 - finalScore,
+            details: `After humanization: ${100 - finalScore}% human score`,
+          },
+        };
+        await supabase
+          .from("assignments")
+          .update({ generation_metadata: updatedMetadata } as any)
+          .eq("id", id);
+        setAssignment((prev) =>
+          prev ? { ...prev, generation_metadata: updatedMetadata } : prev
+        );
+      }
 
       setAssignment((prev) =>
         prev ? { ...prev, humanized_content: data.humanized_content } : prev
@@ -354,26 +248,25 @@ const AssignmentEditor = () => {
       setHasChanges(false);
 
       toast({
-        title: data.final_score != null && data.final_score <= 15
-          ? "Deep Humanize Complete! ✨"
-          : `Deep Humanize Done (Score: ${data.final_score ?? "?"}%)`,
+        title: finalScore != null && finalScore <= 15
+          ? "Humanization Complete! ✨"
+          : `Humanization Done (Score: ${finalScore ?? "?"}%)`,
         description: `${data.credits_used} credits used. ${data.credits_remaining} remaining.`,
       });
     } catch (err: any) {
       toast({
-        title: "Deep Humanize Failed",
+        title: "Humanization Failed",
         description: err.message || "Please try again.",
         variant: "destructive",
       });
     } finally {
-      setDeepHumanizing(false);
+      setHumanizing(false);
     }
   };
 
-  const handleStopDeepHumanize = useCallback(() => {
-    stopDeepHumanizeRef.current = true;
+  const handleStopHumanize = useCallback(() => {
+    stopHumanizeRef.current = true;
   }, []);
-
 
   const handleExportTxt = () => {
     if (!activeContent || !assignment) return;
@@ -438,70 +331,36 @@ const AssignmentEditor = () => {
         {/* Tools Bar */}
         <Card>
           <CardContent className="p-3 flex flex-wrap items-center gap-2">
-            {assignment.humanized_content ? (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 border rounded-lg p-1">
-                  <Button
-                    variant={!showHumanized ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => handleVersionSwitch(false)}
-                    className="text-xs h-7"
-                  >
-                    Original
-                  </Button>
-                  <Button
-                    variant={showHumanized ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => handleVersionSwitch(true)}
-                    className="text-xs h-7"
-                  >
-                    Humanized
-                  </Button>
-                </div>
+            {assignment.humanized_content && (
+              <div className="flex items-center gap-1 border rounded-lg p-1">
                 <Button
+                  variant={!showHumanized ? "default" : "ghost"}
                   size="sm"
-                  onClick={() => setShowDeepConfirm(true)}
-                  disabled={deepHumanizing}
-                  variant="outline"
-                  className="border-green-500/50 text-green-600 hover:bg-green-500 hover:text-white"
+                  onClick={() => handleVersionSwitch(false)}
+                  className="text-xs h-7"
                 >
-                  <Zap className="h-4 w-4 mr-1" />
-                  {deepHumanizing ? "Running..." : "Deep Humanize"}
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1">
-                <Button
-                  size="sm"
-                  onClick={handleHumanize}
-                  disabled={humanizing || autoHumanizing || deepHumanizing}
-                  className="bg-accent text-accent-foreground hover:bg-accent/90"
-                >
-                  <Wand2 className="h-4 w-4 mr-1" />
-                  {humanizing ? "Humanizing..." : "Humanize"}
+                  Original
                 </Button>
                 <Button
+                  variant={showHumanized ? "default" : "ghost"}
                   size="sm"
-                  onClick={handleAutoHumanize}
-                  disabled={humanizing || autoHumanizing || deepHumanizing}
-                  variant="outline"
-                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                  onClick={() => handleVersionSwitch(true)}
+                  className="text-xs h-7"
                 >
-                  <Bot className="h-4 w-4 mr-1" />
-                  Auto-Humanize
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => setShowDeepConfirm(true)}
-                  disabled={humanizing || autoHumanizing || deepHumanizing}
-                  variant="outline"
-                  className="border-green-500/50 text-green-600 hover:bg-green-500 hover:text-white"
-                >
-                  <Zap className="h-4 w-4 mr-1" />
-                  {deepHumanizing ? "Running..." : "Deep Humanize"}
+                  Humanized
                 </Button>
               </div>
             )}
+
+            <Button
+              size="sm"
+              onClick={() => setShowHumanizeConfirm(true)}
+              disabled={humanizing}
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
+            >
+              <Wand2 className="h-4 w-4 mr-1" />
+              {humanizing ? "Humanizing..." : "Humanize"}
+            </Button>
 
             <AiDetectionScore
               content={activeContent || ""}
@@ -572,69 +431,14 @@ const AssignmentEditor = () => {
           </CardContent>
         </Card>
 
-        {/* Humanization Progress */}
-        {humanizing && (
-          <Card>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Wand2 className="h-4 w-4 text-accent animate-pulse" />
-                <span className="text-sm font-medium text-foreground">AI bypass engine processing...</span>
-              </div>
-              <Progress value={humanizeProgress} className="h-2" />
-              <p className="text-xs text-muted-foreground">
-                This may take 1-2 minutes — your text is being processed by a dedicated humanization engine
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Auto-Humanize Progress */}
-        {autoHumanizing && (
-          <Card className="border-accent/30">
-            <CardContent className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-accent animate-pulse" />
-                  <span className="text-sm font-medium text-foreground">
-                    Auto-Humanize — Pass {autoHumanizePass} of {MAX_PASSES}
-                  </span>
-                </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={handleStopAutoHumanize}
-                  className="h-7 text-xs text-muted-foreground hover:text-destructive"
-                >
-                  <Square className="h-3 w-3 mr-1" />
-                  Stop
-                </Button>
-              </div>
-              <Progress value={(autoHumanizePass / MAX_PASSES) * 100} className="h-2" />
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>
-                  {autoHumanizeScore !== null
-                    ? `Current AI Score: ${autoHumanizeScore}%`
-                    : "Checking..."}
-                </span>
-                <span>Target: &lt; {TARGET_SCORE}%</span>
-              </div>
-              {autoHumanizeTotalCredits > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Credits used so far: {autoHumanizeTotalCredits}
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Deep Humanize Progress */}
-        {(deepHumanizing || deepHumanizePasses.length > 0) && (
+        {/* Humanize Progress */}
+        {(humanizing || humanizePasses.length > 0) && (
           <DeepHumanizeProgress
-            currentPass={deepHumanizePass}
+            currentPass={humanizePass}
             maxPasses={MAX_PASSES}
-            passes={deepHumanizePasses}
-            isRunning={deepHumanizing}
-            onStop={handleStopDeepHumanize}
+            passes={humanizePasses}
+            isRunning={humanizing}
+            onStop={handleStopHumanize}
           />
         )}
 
@@ -660,16 +464,16 @@ const AssignmentEditor = () => {
         <ReferenceValidator references={assignment.references_list} assignmentId={id!} />
       </div>
 
-      {/* Deep Humanize Confirmation Dialog */}
-      <Dialog open={showDeepConfirm} onOpenChange={setShowDeepConfirm}>
+      {/* Humanize Confirmation Dialog */}
+      <Dialog open={showHumanizeConfirm} onOpenChange={setShowHumanizeConfirm}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-green-500" />
-              Deep Humanize
+              <Wand2 className="h-5 w-5 text-accent" />
+              Humanize Assignment
             </DialogTitle>
             <DialogDescription>
-              This will run up to {MAX_PASSES} passes of targeted sentence rewriting using AI detection feedback to minimize your AI score.
+              This will run up to {MAX_PASSES} passes of targeted rewriting using AI detection feedback to minimize your AI score.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
@@ -690,22 +494,22 @@ const AssignmentEditor = () => {
               <span className="text-foreground">≤ {TARGET_SCORE}%</span>
             </div>
             <p className="text-xs text-muted-foreground">
-              Only sentences flagged as AI-written will be rewritten. The rest stays unchanged.
+              Sentences flagged as AI-written will be rewritten. The rest stays unchanged.
             </p>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShowDeepConfirm(false)}>
+            <Button variant="outline" onClick={() => setShowHumanizeConfirm(false)}>
               Cancel
             </Button>
             <Button
               onClick={() => {
-                setShowDeepConfirm(false);
-                handleDeepHumanize();
+                setShowHumanizeConfirm(false);
+                handleHumanize();
               }}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-accent text-accent-foreground hover:bg-accent/90"
             >
-              <Zap className="h-4 w-4 mr-1" />
-              Confirm & Run
+              <Wand2 className="h-4 w-4 mr-1" />
+              Confirm & Humanize
             </Button>
           </DialogFooter>
         </DialogContent>
