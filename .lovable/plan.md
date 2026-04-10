@@ -1,68 +1,92 @@
 
 
-# Targeted AI Detection Reduction System
+# Administrator-Student Account Management System
 
-## Problem
-The current humanize function rewrites the entire text in one pass, which often isn't enough to bring AI detection scores down. The screenshot shows high AI detection even after humanization.
+## Overview
 
-## Solution: Smart Targeted Humanization
+Administrators (agents with Manager Add-on) can invite students and get full access to their folders and assignments. An admin can manage unlimited students from a dedicated dashboard.
 
-Instead of rewriting everything, we build a **feedback loop** that uses GPTZero to identify exactly which sentences are flagged, then rewrites **only those sentences** — repeating until the score drops below threshold.
+## Data Model
 
-### Architecture
-
+**New table: `managed_students`**
 ```text
-User clicks "Deep Humanize"
-  │
-  ├─► GPTZero scan → get flagged sentences
-  │
-  ├─► Send ONLY flagged sentences to AI for rewriting
-  │     (with surrounding context for coherence)
-  │
-  ├─► Replace rewritten sentences back into full text
-  │
-  ├─► Re-scan with GPTZero
-  │     └─► If score > 15% AND passes < 3 → loop back
-  │     └─► If score ≤ 15% OR passes = 3 → done, save
-  │
-  └─► Show progress: "Pass 1/3... 12 sentences rewritten... Score: 45% → 22%"
+id          UUID PK
+admin_id    UUID (references auth.users)
+student_id  UUID (references auth.users, nullable — filled on accept)
+invite_email TEXT NOT NULL
+status      TEXT DEFAULT 'pending' (pending | accepted | revoked)
+created_at  TIMESTAMPTZ
+updated_at  TIMESTAMPTZ
 ```
 
-### Changes
+RLS policies:
+- Admins can SELECT/INSERT/UPDATE/DELETE their own rows (WHERE admin_id = auth.uid())
+- Students can SELECT rows where student_id = auth.uid()
+- Students can UPDATE (accept invite) where invite_email matches their email
 
-**A. New edge function: `targeted-humanize/index.ts`**
-- Accepts `content`, `assignment_id`, and optionally `flagged_sentences` from GPTZero
-- If no flagged sentences provided, calls GPTZero first to get them
-- Sends only sentences with `generated_prob > 0.5` to AI with a focused prompt: "Rewrite these specific sentences to sound more human, keeping the same meaning"
-- Reconstructs the full text with rewritten sentences spliced back in
-- Runs up to 3 passes automatically, checking GPTZero between each pass
-- Returns final content + per-pass scores for the UI
+**New DB function: `is_admin_of(admin_uid, student_uid)`** — SECURITY DEFINER, used in RLS policies on `assignments` and `folders` to allow admin access without recursion.
 
-**B. Enhanced humanize prompt (targeted)**
-- Instead of the generic "rewrite the whole thing", the prompt receives 5-15 specific sentences with context
-- More focused = better results per sentence
-- Prompt emphasizes: vary sentence length, add contractions, use student voice, break uniform patterns
+**Updated RLS on `assignments` and `folders`:**
+- Add SELECT/UPDATE/DELETE policies: `auth.uid() = user_id OR is_admin_of(auth.uid(), user_id)`
+- This gives admins full access to their students' data
 
-**C. UI: Deep Humanize button in `AssignmentEditor.tsx`**
-- New "Deep Humanize" button alongside existing "Humanize"
-- Shows real-time progress: current pass number, sentences being rewritten, score improvement
-- Progress card with pass-by-pass breakdown: "Pass 1: 65% → 42% (14 sentences) | Pass 2: 42% → 18% (6 sentences)"
-- Uses more credits (each GPTZero call + AI rewrite counts)
+## Flow
 
-**D. Credit cost calculation**
-- Each pass costs: GPTZero API call + AI rewrite of flagged sentences
-- Estimate: 2-3x the cost of a single humanize, but much better results
-- Show estimated cost before user confirms
+```text
+Admin clicks "Add Student" → enters student email
+  │
+  ├─► Row created in managed_students (status: pending)
+  ├─► Transactional email sent to student with invite link
+  │
+  Student logs in → sees pending invite banner
+  │
+  ├─► Clicks "Accept" → status changes to accepted, student_id filled
+  │
+  Admin dashboard now shows student's folders & assignments
+```
 
-### Files to create/modify
+## UI Changes
+
+### A. New page: `AdminStudents.tsx` (`/admin/students`)
+- List of managed students (name, email, status, date added)
+- "Add Student" button → dialog with email input
+- Click a student → navigate to their Library view (filtered)
+- Revoke access button per student
+
+### B. Student invite banner (`InviteBanner.tsx`)
+- Shown at top of Dashboard when student has a pending invite
+- "Admin X wants to manage your account" → Accept / Decline buttons
+
+### C. Library page update
+- When admin views a student's library, show breadcrumb: "Students > [Name] > Library"
+- Admin can switch between their own library and student libraries
+
+### D. Sidebar update
+- Add "Students" nav item (only visible for users with `has_manager_addon = true`)
+- Icon: Users
+
+### E. AssignmentEditor access
+- Already protected by RLS — once policies are updated, admin can view student assignments via direct URL
+- Add "Managed by [Admin Name]" badge when student views their own assignment that's being managed
+
+## Files to Create/Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/targeted-humanize/index.ts` | **New** — multi-pass targeted humanization with GPTZero feedback loop |
-| `src/pages/AssignmentEditor.tsx` | Add "Deep Humanize" button + progress UI |
-| `src/components/editor/DeepHumanizeProgress.tsx` | **New** — progress component showing per-pass results |
+| Migration SQL | New `managed_students` table, `is_admin_of()` function, updated RLS on assignments + folders |
+| `src/pages/AdminStudents.tsx` | **New** — student management dashboard for admins |
+| `src/components/InviteBanner.tsx` | **New** — pending invite banner for students |
+| `src/pages/AssignmentsLibrary.tsx` | Support viewing a specific student's library (via query param or route) |
+| `src/components/AppSidebar.tsx` | Add "Students" nav item for manager addon users |
+| `src/App.tsx` | Add `/admin/students` route |
+| `src/pages/Dashboard.tsx` | Show InviteBanner for pending invites |
+| `supabase/functions/send-transactional-email` | Add invite email template |
+| Email template | **New** `student-invite.tsx` template |
 
-### Credit cost
-- Regular humanize: `word_count / 200` credits
-- Deep humanize: `word_count / 100` credits (covers up to 3 passes + GPTZero calls)
+## Security
+
+- `is_admin_of()` is SECURITY DEFINER to avoid RLS recursion
+- Students must explicitly accept invites — no silent access
+- Admin can only access students who accepted their invite
+- Revoking access immediately removes all RLS grants
 
