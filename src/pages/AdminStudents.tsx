@@ -95,6 +95,34 @@ export default function AdminStudents() {
     fetchStudents();
   }, [user]);
 
+  // Realtime: listen for invite status changes (e.g. student accepts)
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('managed-students-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'managed_students',
+          filter: `admin_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated.status === 'accepted') {
+            toast.success(`Student ${updated.invite_email} has accepted your invitation!`);
+          }
+          fetchStudents();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
+
   const handleInvite = async () => {
     if (!user || !inviteEmail.trim()) return;
     setInviteLoading(true);
