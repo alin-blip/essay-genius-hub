@@ -230,15 +230,8 @@ ${gradeInstruction}
 ## Assignment Structure
 ${structureInstruction}
 
-## Referencing
-${include_harvard_refs ? `Use Harvard referencing style throughout:
-- In-text: (Author, Year) or Author (Year). Vary which format you use — don't be consistent (real students aren't).
-- Sometimes put the citation mid-sentence, sometimes at the end
-- Full reference list at the end in alphabetical order
-- Mix of recent (2019-2025) and older seminal works
-- Mix journals, books, reputable websites, and government reports
-- Aim for ${Math.max(10, Math.ceil(word_count / 300))} references minimum
-- Make ALL references real and plausible for the UK academic context` : "Do not include formal referencing."}
+    ## Referencing
+    ${referencesInstruction}
 
 ${include_case_studies ? `## Case Studies
 Include 2-3 real-world case studies or examples. Name specific companies, organisations, or events with approximate dates and outcomes. Integrate them naturally — don't just bolt them on.` : ""}
