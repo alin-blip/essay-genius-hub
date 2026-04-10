@@ -584,7 +584,6 @@ const AssignmentEditor = () => {
               <p className="text-xs text-muted-foreground">
                 This may take 1-2 minutes — your text is being processed by a dedicated humanization engine
               </p>
-              </p>
             </CardContent>
           </Card>
         )}

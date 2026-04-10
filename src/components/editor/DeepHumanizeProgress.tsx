@@ -91,8 +91,6 @@ const DeepHumanizeProgress = ({
             AI bypass engine processing — this may take 1-2 minutes per pass...
           </p>
         )}
-          </p>
-        )}
 
         {!isRunning && latestScore !== null && (
           <p className="text-xs font-medium text-foreground">
