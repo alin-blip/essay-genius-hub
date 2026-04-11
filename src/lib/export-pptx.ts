@@ -1,9 +1,11 @@
 import pptxgen from "pptxgenjs";
 
 interface SlideData {
-  type: "title" | "content" | "two_column" | "bullet_list" | "quote" | "stats" | "conclusion";
+  type: "title" | "content" | "two_column" | "bullet_list" | "quote" | "stats" | "conclusion" | "image_content";
   title: string;
   content: any;
+  image_prompt?: string;
+  image_data?: string; // base64 data URI
 }
 
 // Design tokens — dark blue + gold accent matching AssignmentPro brand
@@ -17,11 +19,22 @@ const COLORS = {
   bodyBg: "f1f5f9",
 };
 
+function addHeaderBar(pres: pptxgen, s: any, title: string) {
+  s.addShape(pres.ShapeType.rect, {
+    x: 0, y: 0, w: 10, h: 0.9,
+    fill: { color: COLORS.primary },
+  });
+  s.addText(title, {
+    x: 0.5, y: 0.1, w: 9, h: 0.7,
+    fontSize: 22, fontFace: "Calibri", color: COLORS.white,
+    bold: true, align: "left",
+  });
+}
+
 function addTitleSlide(pres: pptxgen, slide: SlideData) {
   const s = pres.addSlide();
   s.background = { color: COLORS.dark };
 
-  // Accent line
   s.addShape(pres.ShapeType.rect, {
     x: 0.5, y: 2.0, w: 1.5, h: 0.06,
     fill: { color: COLORS.accent },
@@ -53,67 +66,89 @@ function addTitleSlide(pres: pptxgen, slide: SlideData) {
 function addContentSlide(pres: pptxgen, slide: SlideData) {
   const s = pres.addSlide();
   s.background = { color: COLORS.light };
+  addHeaderBar(pres, s, slide.title);
 
-  // Header bar
-  s.addShape(pres.ShapeType.rect, {
-    x: 0, y: 0, w: 10, h: 0.9,
-    fill: { color: COLORS.primary },
-  });
+  if (slide.image_data) {
+    // Two-column: text left, image right
+    s.addText(slide.content?.text || "", {
+      x: 0.5, y: 1.3, w: 4.5, h: 4.0,
+      fontSize: 15, fontFace: "Calibri", color: COLORS.dark,
+      align: "left", valign: "top", paraSpaceAfter: 8,
+    });
+    s.addImage({
+      data: slide.image_data,
+      x: 5.3, y: 1.3, w: 4.2, h: 3.8,
+      rounding: true,
+    });
+  } else {
+    s.addText(slide.content?.text || "", {
+      x: 0.5, y: 1.3, w: 9, h: 4.0,
+      fontSize: 16, fontFace: "Calibri", color: COLORS.dark,
+      align: "left", valign: "top", paraSpaceAfter: 8,
+    });
+  }
+}
 
-  s.addText(slide.title, {
-    x: 0.5, y: 0.1, w: 9, h: 0.7,
-    fontSize: 22, fontFace: "Calibri", color: COLORS.white,
-    bold: true, align: "left",
-  });
+function addImageContentSlide(pres: pptxgen, slide: SlideData) {
+  const s = pres.addSlide();
+  s.background = { color: COLORS.light };
+  addHeaderBar(pres, s, slide.title);
 
-  s.addText(slide.content?.text || "", {
-    x: 0.5, y: 1.3, w: 9, h: 4.0,
-    fontSize: 16, fontFace: "Calibri", color: COLORS.dark,
-    align: "left", valign: "top", paraSpaceAfter: 8,
-  });
+  if (slide.image_data) {
+    // Image on top, text below
+    s.addImage({
+      data: slide.image_data,
+      x: 0.5, y: 1.2, w: 9, h: 2.8,
+      rounding: true,
+    });
+    s.addText(slide.content?.text || "", {
+      x: 0.5, y: 4.2, w: 9, h: 1.3,
+      fontSize: 14, fontFace: "Calibri", color: COLORS.dark,
+      align: "left", valign: "top",
+    });
+  } else {
+    s.addText(slide.content?.text || "", {
+      x: 0.5, y: 1.3, w: 9, h: 4.0,
+      fontSize: 16, fontFace: "Calibri", color: COLORS.dark,
+      align: "left", valign: "top", paraSpaceAfter: 8,
+    });
+  }
 }
 
 function addBulletSlide(pres: pptxgen, slide: SlideData) {
   const s = pres.addSlide();
   s.background = { color: COLORS.light };
-
-  s.addShape(pres.ShapeType.rect, {
-    x: 0, y: 0, w: 10, h: 0.9,
-    fill: { color: COLORS.primary },
-  });
-
-  s.addText(slide.title, {
-    x: 0.5, y: 0.1, w: 9, h: 0.7,
-    fontSize: 22, fontFace: "Calibri", color: COLORS.white,
-    bold: true, align: "left",
-  });
+  addHeaderBar(pres, s, slide.title);
 
   const bullets = (slide.content?.bullets || []).map((b: string) => ({
     text: b,
     options: { bullet: { code: "2022", color: COLORS.accent }, indentLevel: 0 },
   }));
 
-  s.addText(bullets, {
-    x: 0.7, y: 1.3, w: 8.6, h: 4.0,
-    fontSize: 16, fontFace: "Calibri", color: COLORS.dark,
-    valign: "top", paraSpaceAfter: 10,
-  });
+  if (slide.image_data) {
+    s.addText(bullets, {
+      x: 0.7, y: 1.3, w: 4.3, h: 4.0,
+      fontSize: 15, fontFace: "Calibri", color: COLORS.dark,
+      valign: "top", paraSpaceAfter: 10,
+    });
+    s.addImage({
+      data: slide.image_data,
+      x: 5.3, y: 1.3, w: 4.2, h: 3.8,
+      rounding: true,
+    });
+  } else {
+    s.addText(bullets, {
+      x: 0.7, y: 1.3, w: 8.6, h: 4.0,
+      fontSize: 16, fontFace: "Calibri", color: COLORS.dark,
+      valign: "top", paraSpaceAfter: 10,
+    });
+  }
 }
 
 function addTwoColumnSlide(pres: pptxgen, slide: SlideData) {
   const s = pres.addSlide();
   s.background = { color: COLORS.light };
-
-  s.addShape(pres.ShapeType.rect, {
-    x: 0, y: 0, w: 10, h: 0.9,
-    fill: { color: COLORS.primary },
-  });
-
-  s.addText(slide.title, {
-    x: 0.5, y: 0.1, w: 9, h: 0.7,
-    fontSize: 22, fontFace: "Calibri", color: COLORS.white,
-    bold: true, align: "left",
-  });
+  addHeaderBar(pres, s, slide.title);
 
   const left = slide.content?.left;
   const right = slide.content?.right;
@@ -169,7 +204,6 @@ function addQuoteSlide(pres: pptxgen, slide: SlideData) {
   const s = pres.addSlide();
   s.background = { color: COLORS.primary };
 
-  // Large quote mark
   s.addText("\u201C", {
     x: 0.5, y: 0.5, w: 2, h: 2,
     fontSize: 120, fontFace: "Georgia", color: COLORS.accent,
@@ -194,17 +228,7 @@ function addQuoteSlide(pres: pptxgen, slide: SlideData) {
 function addStatsSlide(pres: pptxgen, slide: SlideData) {
   const s = pres.addSlide();
   s.background = { color: COLORS.light };
-
-  s.addShape(pres.ShapeType.rect, {
-    x: 0, y: 0, w: 10, h: 0.9,
-    fill: { color: COLORS.primary },
-  });
-
-  s.addText(slide.title, {
-    x: 0.5, y: 0.1, w: 9, h: 0.7,
-    fontSize: 22, fontFace: "Calibri", color: COLORS.white,
-    bold: true, align: "left",
-  });
+  addHeaderBar(pres, s, slide.title);
 
   const stats = slide.content?.stats || [];
   const count = Math.min(stats.length, 4);
@@ -278,6 +302,9 @@ export async function exportToPptx(slides: SlideData[], title: string): Promise<
     switch (slide.type) {
       case "title":
         addTitleSlide(pres, slide);
+        break;
+      case "image_content":
+        addImageContentSlide(pres, slide);
         break;
       case "content":
         addContentSlide(pres, slide);
