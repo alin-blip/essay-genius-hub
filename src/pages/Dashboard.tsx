@@ -30,6 +30,7 @@ import UsageHistoryChart from "@/components/dashboard/UsageHistoryChart";
 import WordUsageCard from "@/components/dashboard/WordUsageCard";
 import InviteBanner from "@/components/InviteBanner";
 import ReferralDialog from "@/components/ReferralDialog";
+import FeedbackPopup from "@/components/FeedbackPopup";
 import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious, PaginationEllipsis,
@@ -227,7 +228,8 @@ const Dashboard = () => {
     <div className="bg-secondary/20 min-h-full">
 
       <div className="container py-8 space-y-8">
-        <InviteBanner />
+      <FeedbackPopup />
+      <InviteBanner />
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
