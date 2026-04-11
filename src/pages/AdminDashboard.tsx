@@ -48,6 +48,19 @@ interface AssignmentRow {
   updated_at: string;
 }
 
+interface FeedbackRow {
+  id: string;
+  user_id: string;
+  rating: number;
+  message: string | null;
+  category: string;
+  allow_case_study: boolean;
+  credits_awarded: boolean;
+  created_at: string;
+  full_name: string;
+  university: string;
+}
+
 const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
