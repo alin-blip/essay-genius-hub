@@ -37,6 +37,9 @@ import { exportToDocx } from "@/lib/export-docx";
 import { exportToPdf } from "@/lib/export-pdf";
 import TipTapEditor from "@/components/editor/TipTapEditor";
 import { exportToPptx } from "@/lib/export-pptx";
+import PptxThemePicker from "@/components/editor/PptxThemePicker";
+import SlidePreview from "@/components/editor/SlidePreview";
+import type { PptxTheme } from "@/lib/pptx-themes";
 import AiDetectionScore, { type DetectionResult, type SentenceAnalysis } from "@/components/editor/AiDetectionScore";
 import ReferenceValidator from "@/components/editor/ReferenceValidator";
 import GenerationReport from "@/components/editor/GenerationReport";
@@ -70,6 +73,10 @@ const AssignmentEditor = () => {
   const [showAiHighlights, setShowAiHighlights] = useState(false);
   const [showHumanizeConfirm, setShowHumanizeConfirm] = useState(false);
   const [generatingPptx, setGeneratingPptx] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const [pptxSlides, setPptxSlides] = useState<any[] | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<PptxTheme | null>(null);
+  const [exportingPptx, setExportingPptx] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopHumanizeRef = useRef(false);
@@ -289,11 +296,12 @@ const AssignmentEditor = () => {
     setHasChanges(false);
   };
 
-  const handleGeneratePptx = async () => {
+  const handleGeneratePptx = async (theme: PptxTheme) => {
     if (!activeContent || !assignment) return;
+    setShowThemePicker(false);
+    setSelectedTheme(theme);
     setGeneratingPptx(true);
     try {
-      // Step 1: Generate slide structure
       toast({ title: "Generating slide structure..." });
       const { data, error } = await supabase.functions.invoke("generate-pptx-structure", {
         body: {
@@ -307,7 +315,7 @@ const AssignmentEditor = () => {
 
       const slides = data.slides;
 
-      // Step 2: Generate images in parallel for slides that have image_prompt
+      // Generate images in parallel
       const slidesWithPrompts = slides.filter((s: any) => s.image_prompt);
       if (slidesWithPrompts.length > 0) {
         toast({ title: `Generating ${slidesWithPrompts.length} images...` });
@@ -318,7 +326,6 @@ const AssignmentEditor = () => {
             })
           )
         );
-        
         let imgIdx = 0;
         for (const slide of slides) {
           if (slide.image_prompt) {
@@ -331,12 +338,26 @@ const AssignmentEditor = () => {
         }
       }
 
-      await exportToPptx(slides, assignment.title);
-      toast({ title: "Presentation downloaded! 🎉" });
+      setPptxSlides(slides);
+      toast({ title: "Slides ready — review before downloading" });
     } catch (err: any) {
       toast({ title: "Failed to generate presentation", description: err.message, variant: "destructive" });
     } finally {
       setGeneratingPptx(false);
+    }
+  };
+
+  const handleExportPptx = async (slides: any[]) => {
+    if (!assignment || !selectedTheme) return;
+    setExportingPptx(true);
+    try {
+      await exportToPptx(slides, assignment.title, selectedTheme.colors);
+      toast({ title: "Presentation downloaded! 🎉" });
+      setPptxSlides(null);
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setExportingPptx(false);
     }
   };
 
@@ -500,7 +521,7 @@ const AssignmentEditor = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleGeneratePptx}
+              onClick={() => setShowThemePicker(true)}
               disabled={generatingPptx}
             >
               <Presentation className="h-4 w-4 mr-1" />
@@ -592,6 +613,24 @@ const AssignmentEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PptxThemePicker
+        open={showThemePicker}
+        onClose={() => setShowThemePicker(false)}
+        onSelect={handleGeneratePptx}
+        loading={generatingPptx}
+      />
+
+      {pptxSlides && selectedTheme && (
+        <SlidePreview
+          open={!!pptxSlides}
+          slides={pptxSlides}
+          theme={selectedTheme}
+          onClose={() => setPptxSlides(null)}
+          onExport={handleExportPptx}
+          exporting={exportingPptx}
+        />
+      )}
     </div>
     </DashboardLayout>
   );
