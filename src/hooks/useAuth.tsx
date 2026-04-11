@@ -66,13 +66,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
 
       if (session?.user && _event === "SIGNED_IN") {
+        // Affiliate referral (existing system)
         const affId = localStorage.getItem("ref_affiliate_id");
         if (affId) {
           await supabase.from("referrals").upsert(
             { affiliate_id: affId, referred_user_id: session.user.id, status: "signed_up" },
             { onConflict: "referred_user_id" }
           );
-          // Notify affiliate about the new sign-up
           const { data: affiliate } = await supabase
             .from("affiliates")
             .select("contact_email, contact_name")
@@ -92,9 +92,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             });
           }
           localStorage.removeItem("ref_affiliate_id");
-          localStorage.removeItem("ref_code");
-          localStorage.removeItem("ref_ts");
         }
+
+        // Friend referral system
+        const friendRefCode = localStorage.getItem("friend_ref_code");
+        if (friendRefCode) {
+          // Look up referrer by referral_code
+          const { data: referrerProfile } = await supabase
+            .from("profiles")
+            .select("user_id, referral_code")
+            .eq("referral_code", friendRefCode)
+            .maybeSingle();
+
+          if (referrerProfile && referrerProfile.user_id !== session.user.id) {
+            await supabase.from("friend_referrals").upsert(
+              {
+                referrer_id: referrerProfile.user_id,
+                referred_id: session.user.id,
+                referral_code: friendRefCode,
+                status: "pending",
+              },
+              { onConflict: "referred_id" }
+            );
+          }
+          localStorage.removeItem("friend_ref_code");
+        }
+
+        localStorage.removeItem("ref_code");
+        localStorage.removeItem("ref_ts");
+
         // Check subscription after sign-in
         setTimeout(checkSubscription, 500);
       }

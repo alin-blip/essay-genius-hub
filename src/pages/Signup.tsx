@@ -18,12 +18,13 @@ const Signup = () => {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
 
-  // Capture referral code from URL
+  // Capture referral code from URL (affiliate + friend)
   useEffect(() => {
     const ref = searchParams.get("ref");
     if (ref) {
       localStorage.setItem("ref_code", ref);
       localStorage.setItem("ref_ts", Date.now().toString());
+      localStorage.setItem("friend_ref_code", ref);
     }
   }, [searchParams]);
 
