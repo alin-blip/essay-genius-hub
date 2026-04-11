@@ -33,7 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
-const ADMIN_EMAILS = ["admin@assignmentpro.uk", "support@assignmentpro.uk"];
+const ADMIN_EMAILS = ["admin@assignmentpro.uk", "support@assignmentpro.uk", "alinflorinradu@icloud.com"];
 
 interface ProfileRow {
   id: string;
