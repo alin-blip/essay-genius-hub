@@ -276,7 +276,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-[95vw] max-w-[95vw] h-[92vh] p-0 gap-0 overflow-hidden border-none bg-[#1e1e1e]">
+      <DialogContent className="fixed inset-0 !translate-x-0 !translate-y-0 !left-0 !top-0 w-screen h-screen max-w-none p-0 gap-0 overflow-hidden border-none rounded-none bg-[#1e1e1e]">
         {/* Hidden accessible title */}
         <DialogTitle className="sr-only">Slide Preview</DialogTitle>
         <DialogDescription className="sr-only">{slides.length} slides · {theme.name}</DialogDescription>
