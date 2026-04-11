@@ -69,6 +69,7 @@ const AssignmentEditor = () => {
   const [detectionSentences, setDetectionSentences] = useState<SentenceAnalysis[]>([]);
   const [showAiHighlights, setShowAiHighlights] = useState(false);
   const [showHumanizeConfirm, setShowHumanizeConfirm] = useState(false);
+  const [generatingPptx, setGeneratingPptx] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopHumanizeRef = useRef(false);
