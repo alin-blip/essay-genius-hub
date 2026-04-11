@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Download, ChevronLeft, ChevronRight, Pencil, Check, X, Trash2, Presentation } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 import type { PptxTheme } from "@/lib/pptx-themes";
 
 interface SlideData {
