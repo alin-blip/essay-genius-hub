@@ -8,8 +8,8 @@ interface SlideData {
   image_data?: string; // base64 data URI
 }
 
-// Design tokens — dark blue + gold accent matching AssignmentPro brand
-const COLORS = {
+// Design tokens — can be overridden by theme
+const DEFAULT_COLORS = {
   primary: "1a365d",
   accent: "d4a843",
   dark: "0f172a",
@@ -18,6 +18,9 @@ const COLORS = {
   white: "FFFFFF",
   bodyBg: "f1f5f9",
 };
+
+type ColorSet = typeof DEFAULT_COLORS;
+let COLORS: ColorSet = { ...DEFAULT_COLORS };
 
 function addHeaderBar(pres: pptxgen, s: any, title: string) {
   s.addShape(pres.ShapeType.rect, {
@@ -292,7 +295,8 @@ function addConclusionSlide(pres: pptxgen, slide: SlideData) {
   }
 }
 
-export async function exportToPptx(slides: SlideData[], title: string): Promise<void> {
+export async function exportToPptx(slides: SlideData[], title: string, themeColors?: Partial<ColorSet>): Promise<void> {
+  COLORS = { ...DEFAULT_COLORS, ...themeColors };
   const pres = new pptxgen();
   pres.layout = "LAYOUT_WIDE";
   pres.author = "AssignmentPro";
