@@ -74,7 +74,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
     return { ...c, text };
   };
 
-  const [editText, setEditText] = useState("");
+  // editText state moved to top with other hooks
 
   const startEditContent = () => {
     setEditText(getContentPreview(slide));
