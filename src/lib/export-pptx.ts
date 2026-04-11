@@ -170,7 +170,7 @@ function addQuoteSlide(pres: pptxgen, slide: SlideData) {
   s.background = { color: COLORS.primary };
 
   // Large quote mark
-  s.addText(""", {
+  s.addText("\u201C", {
     x: 0.5, y: 0.5, w: 2, h: 2,
     fontSize: 120, fontFace: "Georgia", color: COLORS.accent,
     bold: true, align: "left",
