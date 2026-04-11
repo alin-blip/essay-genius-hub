@@ -234,60 +234,117 @@ const AdminDashboard = () => {
           </Card>
         </div>
 
-        {/* User table */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Users</CardTitle>
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>University</TableHead>
-                  <TableHead>Level</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Credits</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
-                    <TableCell>{p.university || "—"}</TableCell>
-                    <TableCell>{p.university_level || "—"}</TableCell>
-                    <TableCell><Badge variant="secondary">{p.subscription_plan}</Badge></TableCell>
-                    <TableCell>{p.credits_balance.toLocaleString()}</TableCell>
-                    <TableCell>
-                      {p.has_manager_addon ? <Badge variant="default">Active</Badge> : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-xs">{new Date(p.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => setCreditDialog({ open: true, userId: p.user_id, name: p.full_name || "User", current: p.credits_balance })}>
-                          <CreditCard className="h-3 w-3 mr-1" /> Credits
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => openAssignments(p.user_id, p.full_name || "User")}>
-                          <FileText className="h-3 w-3 mr-1" /> Assignments
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
+        <Tabs defaultValue="users">
+          <TabsList>
+            <TabsTrigger value="users"><Users className="h-4 w-4 mr-1" /> Users</TabsTrigger>
+            <TabsTrigger value="feedback"><MessageSquare className="h-4 w-4 mr-1" /> Feedback ({feedbackList.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Users</CardTitle>
+                  <div className="relative w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>University</TableHead>
+                      <TableHead>Level</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Credits</TableHead>
+                      <TableHead>Manager</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
+                        <TableCell>{p.university || "—"}</TableCell>
+                        <TableCell>{p.university_level || "—"}</TableCell>
+                        <TableCell><Badge variant="secondary">{p.subscription_plan}</Badge></TableCell>
+                        <TableCell>{p.credits_balance.toLocaleString()}</TableCell>
+                        <TableCell>
+                          {p.has_manager_addon ? <Badge variant="default">Active</Badge> : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-xs">{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="outline" size="sm" className="text-xs" onClick={() => setCreditDialog({ open: true, userId: p.user_id, name: p.full_name || "User", current: p.credits_balance })}>
+                              <CreditCard className="h-3 w-3 mr-1" /> Credits
+                            </Button>
+                            <Button variant="outline" size="sm" className="text-xs" onClick={() => openAssignments(p.user_id, p.full_name || "User")}>
+                              <FileText className="h-3 w-3 mr-1" /> Assignments
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="feedback">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Feedback</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {feedbackLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+                  </div>
+                ) : feedbackList.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">No feedback yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>University</TableHead>
+                        <TableHead>Rating</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Case Study</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {feedbackList.map((f) => (
+                        <TableRow key={f.id}>
+                          <TableCell className="font-medium">{f.full_name}</TableCell>
+                          <TableCell>{f.university}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star key={s} className={`h-4 w-4 ${s <= f.rating ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">{f.message || "—"}</TableCell>
+                          <TableCell>
+                            {f.allow_case_study ? <Badge variant="default">Yes</Badge> : <span className="text-muted-foreground">No</span>}
+                          </TableCell>
+                          <TableCell className="text-xs">{new Date(f.created_at).toLocaleDateString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
       {/* Credit adjustment dialog */}
       <Dialog open={creditDialog.open} onOpenChange={(o) => setCreditDialog((prev) => ({ ...prev, open: o }))}>
