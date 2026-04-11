@@ -1,91 +1,68 @@
 
 
-# Audit General — Platforma AssignmentPro
+# Sistem de Referral "Share cu Prieteni" — 1500 credite bonus
 
-## Starea Bazei de Date
+## Ce construim
 
-- **3 utilizatori** inregistrati, **9 assignments** (toate "completed")
-- **12 tabele** in schema publica: assignments, profiles, folders, managed_students, affiliates, referrals, affiliate_payouts, generation_logs, email_send_log/state, email_unsubscribe_tokens, suppressed_emails
-- **RLS policies**: Toate tabelele au politici corecte — utilizatori vad doar datele proprii, adminii au acces prin `is_admin_of()`, affiliatii prin `is_affiliate_of_user()`
-- **Credit tampering protection**: Trigger `prevent_credit_tampering` exista — bine
+Un sistem prin care utilizatorii pot invita prieteni printr-un link unic. Când prietenul se înregistrează **și** își consumă creditele inițiale (1500), referrer-ul primește automat **1500 credite bonus**. Totul este tracked într-un tabel dedicat.
 
-## Ce Functioneaza
+## Diferența față de sistemul de affiliate existent
 
-| Functionalitate | Status | Detalii |
-|---|---|---|
-| Autentificare (email) | OK | Login/signup funcțional |
-| Creare assignment (wizard) | OK | 4 pasi, validare completa |
-| Generare assignment (GPT-5) | OK | Funcționează cu Lovable AI Gateway |
-| Editor TipTap cu formatare | OK | Markdown/HTML, highlight AI |
-| Export PDF/DOCX | OK | Biblioteci integrate |
-| Verificare AI (GPTZero) | OK | Check-ai-detection funcțional |
-| Verificare similaritate | OK | Jaccard n-gram intern |
-| Validare referinte (Crossref) | OK | validate-references funcțional |
-| Dashboard cu stats | OK | Usage chart, credit tracking |
-| Subscription check (Stripe) | OK | Funcționează (user curent: unsubscribed) |
-| Admin dashboard | OK | Email whitelist, credit adjust |
-| Admin student management | OK | Invite, realtime notifications |
-| Folder management | OK | CRUD cu RLS |
-| Affiliate system | OK | Apply, referrals, payouts |
-| Email transactional | OK | Queue-based (pgmq), templates |
-| Landing page | OK | Features, pricing, testimonials, FAQ |
+Sistemul de affiliate existent este pentru parteneri externi (comision Stripe, Connect, etc.). Acesta este un sistem simplu peer-to-peer pentru utilizatorii platformei.
 
-## Probleme Identificate
+## Plan tehnic
 
-### 1. CRITIC — AI Detection inca foarte ridicat
-Ultimele assignments generate (9 Apr) au scoruri AI de **85-90%**. Cauza: datele din DB arata ca AI detection-ul inca foloseste **textul generat de Gemini** (vechi), nu GPTZero real. Noile edge functions (Undetectable.ai + OpenAlex) **nu au fost inca testate** — niciun assignment generat dupa deploy.
+### 1. Tabel nou: `friend_referrals`
 
-- `fetch-references` — deployed dar **0 invocari** (doar boot log)
-- `humanize-text` — deployed, **0 invocari** 
-- `targeted-humanize` — deployed, **0 invocari**
-- `generate-assignment` — **0 loguri recente** (nu s-a generat nimic dupa update)
+```sql
+CREATE TABLE public.friend_referrals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  referrer_id uuid NOT NULL,        -- cine a trimis link-ul
+  referred_id uuid NOT NULL,        -- cine s-a înregistrat
+  referral_code text NOT NULL,      -- codul unic al referrer-ului
+  status text NOT NULL DEFAULT 'pending',  -- pending | credits_earned
+  credits_awarded boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  credited_at timestamptz,
+  UNIQUE(referred_id)
+);
+-- RLS: users can see their own referrals
+-- Service role can manage all
+```
 
-**Concluzie**: Codul este updated dar nu a fost testat. Nu stim daca Undetectable.ai API key-ul este valid sau daca OpenAlex returneaza referinte relevante.
+### 2. Cod referral unic pe profil
 
-### 2. IMPORTANT — Scorurile AI Detection din DB sunt vechi (Gemini)
-2 din 3 assignments recente au `human_score: 10-15` si `details` care spun "exhibits characteristics common in AI-generated content" — acesta e output Gemini, nu GPTZero. Un assignment are `human_score: 90` cu detalii diferite. Inconsistenta totala.
+Adăugăm o coloană `referral_code` pe `profiles` (generată automat la signup via trigger).
 
-### 3. MEDIE — Console Error pe Landing Page
-`RevealSection` component primeste `ref` fara `React.forwardRef()`. Warning repetat in consola:
-> "Function components cannot be given refs"
+### 3. Trigger pe `profiles` — detectează când creditele ajung la 0
 
-### 4. MEDIE — Lipsesc functionalitati promise
-- **Google OAuth** — nu e configurat (doar email auth)
-- **Onboarding page** — exista in router dar nu stim daca e functional
-- **Plans page** — exista dar userul curent nu are subscription
+Un trigger `AFTER UPDATE` pe `profiles` verifică dacă `credits_balance` a ajuns la 0 (sau sub un prag). Dacă utilizatorul este un `referred_id` în `friend_referrals` cu `status = 'pending'`, acordă 1500 credite referrer-ului și marchează `status = 'credits_earned'`.
 
-### 5. MINORA — React Router v6 deprecation warnings
-- `v7_startTransition` si `v7_relativeSplatPath` flags nesetate
+### 4. UI pe Dashboard
 
-### 6. MINORA — Admin auth prin email hardcodat
-`AdminDashboard.tsx` si `admin-data/index.ts` ambele au `ADMIN_EMAILS` hardcodat. Functioneaza dar nu e scalabil.
+- Un card/buton **"Invite Friends — Get 1500 Credits"** pe dashboard
+- Click deschide un dialog cu:
+  - Link-ul unic de referral (copiere cu un click)
+  - Lista prietenilor invitați + status (pending / credits earned)
+  - Contorul de credite câștigate
 
-## Ce Trebuie Testat Urgent
+### 5. Capturare referral la signup
 
-1. **Generare assignment nou** — pentru a verifica ca:
-   - OpenAlex returneaza referinte reale
-   - Referintele sunt injectate in prompt
-   - GPTZero real scan functioneaza (nu Gemini)
-2. **Humanize** pe un assignment existent — pentru a verifica Undetectable.ai API
-3. **Deep Humanize** (targeted) — loop GPTZero + Undetectable.ai
+- Landing/signup citește `?ref=CODE` din URL
+- La signup, se creează un rând în `friend_referrals` cu `referrer_id` (găsit din cod) și `referred_id` (noul user)
 
-## Plan de Actiune Recomandat
+### 6. Fișiere modificate
 
-### Prioritate 1 — Testare + Fix-uri critice
-1. Testeaza generare assignment end-to-end cu noile functii
-2. Testeaza Undetectable.ai humanization
-3. Fix `RevealSection` forwardRef warning
+| Fișier | Ce se schimbă |
+|--------|--------------|
+| **Migration SQL** | Tabel `friend_referrals`, coloana `referral_code` pe `profiles`, trigger generare cod, trigger creditare |
+| `src/pages/Dashboard.tsx` | Buton "Invite Friends" + dialog cu link și statistici |
+| `src/pages/Signup.tsx` | Capturare `?ref=` și salvare în `friend_referrals` la signup |
+| `src/hooks/useAuth.tsx` | La `SIGNED_IN`, creează rândul de referral dacă există cod în localStorage |
 
-### Prioritate 2 — Completari
-4. Adauga Google OAuth (daca dorit)
-5. Verifica Onboarding flow
-6. Seteaza React Router future flags
+### 7. Securitate
 
-### Prioritate 3 — Scalabilitate
-7. Muta admin roles in tabel dedicat (in loc de email hardcodat)
-8. Adauga monitoring/alerting pentru edge function failures
-
-## Rezumat
-
-Platforma are o baza solida — structura DB, RLS, credit system, email queue, admin management toate sunt implementate corect. **Problema principala ramane AI detection**: codul nou (Undetectable.ai + OpenAlex + GPTZero real) este deployed dar **netestat**. Recomand testare imediata cu un assignment nou pentru a valida integrarea.
+- RLS pe `friend_referrals`: utilizatorii pot vedea doar referralurile lor (ca referrer)
+- Creditarea se face prin `SECURITY DEFINER` function (nu direct de client)
+- Trigger-ul previne acordarea dublă (verifică `credits_awarded = false`)
 
