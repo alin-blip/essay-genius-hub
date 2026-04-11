@@ -14,8 +14,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  GraduationCap, Users, FileText, CreditCard, Search, ArrowLeft, Plus, Minus, ExternalLink, Trash2,
+  GraduationCap, Users, FileText, CreditCard, Search, ArrowLeft, Plus, Minus, ExternalLink, Trash2, Star, MessageSquare,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,6 +48,19 @@ interface AssignmentRow {
   updated_at: string;
 }
 
+interface FeedbackRow {
+  id: string;
+  user_id: string;
+  rating: number;
+  message: string | null;
+  category: string;
+  allow_case_study: boolean;
+  credits_awarded: boolean;
+  created_at: string;
+  full_name: string;
+  university: string;
+}
+
 const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -69,6 +83,10 @@ const AdminDashboard = () => {
   });
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
+
+  // Feedback
+  const [feedbackList, setFeedbackList] = useState<FeedbackRow[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; title: string }>({
@@ -98,6 +116,18 @@ const AdminDashboard = () => {
     setProfiles(data.profiles || []);
     setStats(data.stats || { totalUsers: 0, totalAssignments: 0, totalCreditsUsed: 0 });
     setLoading(false);
+    loadFeedback();
+  };
+
+  const loadFeedback = async () => {
+    setFeedbackLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-data", {
+      body: { action: "get_feedback" },
+    });
+    if (!error && !data?.error) {
+      setFeedbackList(data.feedback || []);
+    }
+    setFeedbackLoading(false);
   };
 
   const handleCreditAdjust = async (add: boolean) => {
@@ -204,59 +234,117 @@ const AdminDashboard = () => {
           </Card>
         </div>
 
-        {/* User table */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Users</CardTitle>
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>University</TableHead>
-                  <TableHead>Level</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Credits</TableHead>
-                  <TableHead>Manager</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map((p) => (
-                  <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
-                    <TableCell>{p.university || "—"}</TableCell>
-                    <TableCell>{p.university_level || "—"}</TableCell>
-                    <TableCell><Badge variant="secondary">{p.subscription_plan}</Badge></TableCell>
-                    <TableCell>{p.credits_balance.toLocaleString()}</TableCell>
-                    <TableCell>
-                      {p.has_manager_addon ? <Badge variant="default">Active</Badge> : <span className="text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell className="text-xs">{new Date(p.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => setCreditDialog({ open: true, userId: p.user_id, name: p.full_name || "User", current: p.credits_balance })}>
-                          <CreditCard className="h-3 w-3 mr-1" /> Credits
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => openAssignments(p.user_id, p.full_name || "User")}>
-                          <FileText className="h-3 w-3 mr-1" /> Assignments
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="users">
+          <TabsList>
+            <TabsTrigger value="users"><Users className="h-4 w-4 mr-1" /> Users</TabsTrigger>
+            <TabsTrigger value="feedback"><MessageSquare className="h-4 w-4 mr-1" /> Feedback ({feedbackList.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Users</CardTitle>
+                  <div className="relative w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>University</TableHead>
+                      <TableHead>Level</TableHead>
+                      <TableHead>Plan</TableHead>
+                      <TableHead>Credits</TableHead>
+                      <TableHead>Manager</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
+                        <TableCell>{p.university || "—"}</TableCell>
+                        <TableCell>{p.university_level || "—"}</TableCell>
+                        <TableCell><Badge variant="secondary">{p.subscription_plan}</Badge></TableCell>
+                        <TableCell>{p.credits_balance.toLocaleString()}</TableCell>
+                        <TableCell>
+                          {p.has_manager_addon ? <Badge variant="default">Active</Badge> : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-xs">{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="outline" size="sm" className="text-xs" onClick={() => setCreditDialog({ open: true, userId: p.user_id, name: p.full_name || "User", current: p.credits_balance })}>
+                              <CreditCard className="h-3 w-3 mr-1" /> Credits
+                            </Button>
+                            <Button variant="outline" size="sm" className="text-xs" onClick={() => openAssignments(p.user_id, p.full_name || "User")}>
+                              <FileText className="h-3 w-3 mr-1" /> Assignments
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="feedback">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Feedback</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {feedbackLoading ? (
+                  <div className="flex justify-center py-8">
+                    <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+                  </div>
+                ) : feedbackList.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">No feedback yet.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User</TableHead>
+                        <TableHead>University</TableHead>
+                        <TableHead>Rating</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Case Study</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {feedbackList.map((f) => (
+                        <TableRow key={f.id}>
+                          <TableCell className="font-medium">{f.full_name}</TableCell>
+                          <TableCell>{f.university}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-0.5">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star key={s} className={`h-4 w-4 ${s <= f.rating ? "fill-accent text-accent" : "text-muted-foreground/30"}`} />
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[300px] truncate">{f.message || "—"}</TableCell>
+                          <TableCell>
+                            {f.allow_case_study ? <Badge variant="default">Yes</Badge> : <span className="text-muted-foreground">No</span>}
+                          </TableCell>
+                          <TableCell className="text-xs">{new Date(f.created_at).toLocaleDateString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Credit adjustment dialog */}

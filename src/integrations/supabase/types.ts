@@ -277,6 +277,39 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback: {
+        Row: {
+          allow_case_study: boolean
+          category: string
+          created_at: string
+          credits_awarded: boolean
+          id: string
+          message: string | null
+          rating: number
+          user_id: string
+        }
+        Insert: {
+          allow_case_study?: boolean
+          category?: string
+          created_at?: string
+          credits_awarded?: boolean
+          id?: string
+          message?: string | null
+          rating: number
+          user_id: string
+        }
+        Update: {
+          allow_case_study?: boolean
+          category?: string
+          created_at?: string
+          credits_awarded?: boolean
+          id?: string
+          message?: string | null
+          rating?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       folders: {
         Row: {
           color: string | null

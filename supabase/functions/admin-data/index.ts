@@ -106,6 +106,59 @@ serve(async (req) => {
       );
     }
 
+    if (action === "award_feedback_credits") {
+      if (!user_id) throw new Error("user_id required");
+
+      // Mark latest unawarded feedback as credited
+      const { data: fb } = await serviceClient
+        .from("feedback")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("credits_awarded", false)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (fb && fb.length > 0) {
+        await serviceClient.from("feedback").update({ credits_awarded: true }).eq("id", fb[0].id);
+        await serviceClient.rpc("restore_credits", { p_user_id: user_id, p_amount: 100 });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    if (action === "get_feedback") {
+      const { data: feedbackRows, error: fbError } = await serviceClient
+        .from("feedback")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (fbError) throw new Error(fbError.message);
+
+      // Get profile info for each unique user
+      const userIds = [...new Set((feedbackRows || []).map((f: any) => f.user_id))];
+      const { data: profileRows } = await serviceClient
+        .from("profiles")
+        .select("user_id, full_name, university")
+        .in("user_id", userIds);
+
+      const profileMap: Record<string, any> = {};
+      (profileRows || []).forEach((p: any) => { profileMap[p.user_id] = p; });
+
+      const enriched = (feedbackRows || []).map((f: any) => ({
+        ...f,
+        full_name: profileMap[f.user_id]?.full_name || "—",
+        university: profileMap[f.user_id]?.university || "—",
+      }));
+
+      return new Response(
+        JSON.stringify({ feedback: enriched }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
     if (action === "delete_assignment") {
       if (!assignment_id) throw new Error("assignment_id required");
 
