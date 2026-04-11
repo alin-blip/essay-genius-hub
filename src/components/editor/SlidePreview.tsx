@@ -683,6 +683,14 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
                 <span className="text-sm font-medium text-white truncate">{slide.title}</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-0.5 mr-2 border-r border-[#444] pr-2">
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#999] hover:text-white hover:bg-[#3c3c3c] disabled:opacity-30" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#999] hover:text-white hover:bg-[#3c3c3c] disabled:opacity-30" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
                 <Button size="sm" variant="ghost" className="h-7 text-xs text-[#ccc] hover:text-white hover:bg-[#3c3c3c] gap-1" onClick={() => duplicateSlide(currentSlide)}>
                   <Copy className="h-3 w-3" /> Duplicate
                 </Button>
