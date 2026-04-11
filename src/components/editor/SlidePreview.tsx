@@ -3,9 +3,8 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Download, ChevronLeft, ChevronRight, Pencil, Check, X, Trash2, Presentation } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { PptxTheme } from "@/lib/pptx-themes";
 
@@ -32,6 +31,14 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingContent, setEditingContent] = useState(false);
   const [editText, setEditText] = useState("");
+
+  // Sync slides when new data arrives
+  useEffect(() => {
+    setSlides(initialSlides);
+    setCurrentSlide(0);
+    setEditingTitle(false);
+    setEditingContent(false);
+  }, [initialSlides]);
 
   const slide = slides[currentSlide];
   if (!slide) return null;
@@ -290,15 +297,15 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
                 </div>
 
                 {/* Slide type badge */}
-                <Badge
-                  className="absolute top-2 right-2 text-[9px] px-1.5 py-0 font-mono border-none"
+                <span
+                  className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 font-mono rounded-md"
                   style={{
                     backgroundColor: `#${theme.colors.primary}20`,
                     color: `#${isDarkSlide ? theme.colors.accent : theme.colors.primary}`,
                   }}
                 >
                   {slide.type}
-                </Badge>
+                </span>
               </div>
             </div>
 
