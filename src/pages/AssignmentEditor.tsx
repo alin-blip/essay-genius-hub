@@ -73,6 +73,10 @@ const AssignmentEditor = () => {
   const [showAiHighlights, setShowAiHighlights] = useState(false);
   const [showHumanizeConfirm, setShowHumanizeConfirm] = useState(false);
   const [generatingPptx, setGeneratingPptx] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const [pptxSlides, setPptxSlides] = useState<any[] | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<PptxTheme | null>(null);
+  const [exportingPptx, setExportingPptx] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopHumanizeRef = useRef(false);
