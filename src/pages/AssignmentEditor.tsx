@@ -36,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { exportToDocx } from "@/lib/export-docx";
 import { exportToPdf } from "@/lib/export-pdf";
 import TipTapEditor from "@/components/editor/TipTapEditor";
+import { exportToPptx } from "@/lib/export-pptx";
 import AiDetectionScore, { type DetectionResult, type SentenceAnalysis } from "@/components/editor/AiDetectionScore";
 import ReferenceValidator from "@/components/editor/ReferenceValidator";
 import GenerationReport from "@/components/editor/GenerationReport";
