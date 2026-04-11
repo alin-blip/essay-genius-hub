@@ -549,7 +549,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
   const deleteSlide = (index: number) => {
     if (slides.length <= 1) return;
     const newSlides = slides.filter((_, i) => i !== index);
-    setSlides(newSlides);
+    setSlidesWithHistory(newSlides);
     if (currentSlide >= newSlides.length) setCurrentSlide(newSlides.length - 1);
   };
 
@@ -557,7 +557,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
     const copy = JSON.parse(JSON.stringify(slides[index]));
     const newSlides = [...slides];
     newSlides.splice(index + 1, 0, copy);
-    setSlides(newSlides);
+    setSlidesWithHistory(newSlides);
     setCurrentSlide(index + 1);
   };
 
@@ -566,7 +566,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
     const newSlides = [...slides];
     const [moved] = newSlides.splice(from, 1);
     newSlides.splice(to, 0, moved);
-    setSlides(newSlides);
+    setSlidesWithHistory(newSlides);
     setCurrentSlide(to);
   };
 
@@ -578,7 +578,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
     };
     const newSlides = [...slides];
     newSlides.splice(currentSlide + 1, 0, newSlide);
-    setSlides(newSlides);
+    setSlidesWithHistory(newSlides);
     setCurrentSlide(currentSlide + 1);
     setShowAddMenu(false);
   };
