@@ -345,6 +345,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
         </Tabs>
+      </div>
 
       {/* Credit adjustment dialog */}
       <Dialog open={creditDialog.open} onOpenChange={(o) => setCreditDialog((prev) => ({ ...prev, open: o }))}>
