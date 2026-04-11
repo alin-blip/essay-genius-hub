@@ -293,6 +293,8 @@ const AssignmentEditor = () => {
     if (!activeContent || !assignment) return;
     setGeneratingPptx(true);
     try {
+      // Step 1: Generate slide structure
+      toast({ title: "Generating slide structure..." });
       const { data, error } = await supabase.functions.invoke("generate-pptx-structure", {
         body: {
           content: activeContent,
@@ -303,7 +305,33 @@ const AssignmentEditor = () => {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      await exportToPptx(data.slides, assignment.title);
+      const slides = data.slides;
+
+      // Step 2: Generate images in parallel for slides that have image_prompt
+      const slidesWithPrompts = slides.filter((s: any) => s.image_prompt);
+      if (slidesWithPrompts.length > 0) {
+        toast({ title: `Generating ${slidesWithPrompts.length} images...` });
+        const imageResults = await Promise.allSettled(
+          slidesWithPrompts.map((s: any) =>
+            supabase.functions.invoke("generate-slide-image", {
+              body: { prompt: s.image_prompt },
+            })
+          )
+        );
+        
+        let imgIdx = 0;
+        for (const slide of slides) {
+          if (slide.image_prompt) {
+            const result = imageResults[imgIdx];
+            if (result.status === "fulfilled" && result.value.data?.image) {
+              slide.image_data = result.value.data.image;
+            }
+            imgIdx++;
+          }
+        }
+      }
+
+      await exportToPptx(slides, assignment.title);
       toast({ title: "Presentation downloaded! 🎉" });
     } catch (err: any) {
       toast({ title: "Failed to generate presentation", description: err.message, variant: "destructive" });
