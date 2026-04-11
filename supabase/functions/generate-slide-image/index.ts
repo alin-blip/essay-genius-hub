@@ -1,8 +1,35 @@
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 import { createClient } from "jsr:@supabase/supabase-js@2";
+
+async function tryGenerateImage(prompt: string, apiKey: string, attempt = 1): Promise<string | null> {
+  const imagePrompt = `Create a professional, clean illustration for an academic presentation slide. Style: modern flat design, minimal, professional colors. No text in the image. ${prompt}`;
+
+  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-image",
+      messages: [{ role: "user", content: imagePrompt }],
+      modalities: ["image", "text"],
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    const errText = await aiResponse.text();
+    console.error(`AI request failed [${aiResponse.status}] attempt ${attempt}:`, errText);
+    return null;
+  }
+
+  const aiData = await aiResponse.json();
+  const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+  return imageUrl || null;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -39,33 +66,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    const imagePrompt = `Create a professional, clean illustration for an academic presentation slide. Style: modern flat design, minimal, professional colors. No text in the image. ${prompt}`;
+    const apiKey = Deno.env.get("LOVABLE_API_KEY")!;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [
-          { role: "user", content: imagePrompt },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      throw new Error(`Image generation failed [${aiResponse.status}]: ${errText}`);
+    // Try up to 2 times
+    let imageUrl = await tryGenerateImage(prompt, apiKey, 1);
+    if (!imageUrl) {
+      console.log("Retry image generation (attempt 2)...");
+      imageUrl = await tryGenerateImage(prompt, apiKey, 2);
     }
 
-    const aiData = await aiResponse.json();
-    const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
     if (!imageUrl) {
-      throw new Error("No image returned from AI");
+      // Return 200 with fallback flag so client doesn't crash
+      return new Response(JSON.stringify({ image: null, fallback: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     return new Response(JSON.stringify({ image: imageUrl }), {
@@ -73,8 +87,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     console.error("generate-slide-image error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Failed to generate image" }), {
-      status: 500,
+    return new Response(JSON.stringify({ image: null, fallback: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
