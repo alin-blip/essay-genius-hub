@@ -613,6 +613,24 @@ const AssignmentEditor = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PptxThemePicker
+        open={showThemePicker}
+        onClose={() => setShowThemePicker(false)}
+        onSelect={handleGeneratePptx}
+        loading={generatingPptx}
+      />
+
+      {pptxSlides && selectedTheme && (
+        <SlidePreview
+          open={!!pptxSlides}
+          slides={pptxSlides}
+          theme={selectedTheme}
+          onClose={() => setPptxSlides(null)}
+          onExport={handleExportPptx}
+          exporting={exportingPptx}
+        />
+      )}
     </div>
     </DashboardLayout>
   );
