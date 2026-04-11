@@ -12,7 +12,7 @@ import {
 import {
   Download, ChevronLeft, ChevronRight, Trash2, Plus,
   ImagePlus, Upload, Wand2, GripVertical, Copy,
-  ArrowUp, ArrowDown, X,
+  ArrowUp, ArrowDown, X, Undo2, Redo2,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -480,34 +480,76 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
   const [showAddMenu, setShowAddMenu] = useState(false);
   const { toast } = useToast();
 
+  // Undo/Redo history
+  const historyRef = useRef<SlideData[][]>([initialSlides]);
+  const historyIndexRef = useRef(0);
+
   useEffect(() => {
     setSlides(initialSlides);
     setCurrentSlide(0);
+    historyRef.current = [initialSlides];
+    historyIndexRef.current = 0;
   }, [initialSlides]);
 
-  // Keyboard navigation
+  const pushHistory = useCallback((newSlides: SlideData[]) => {
+    const history = historyRef.current;
+    const idx = historyIndexRef.current;
+    // Truncate any redo states
+    historyRef.current = history.slice(0, idx + 1);
+    historyRef.current.push(JSON.parse(JSON.stringify(newSlides)));
+    // Keep max 50 states
+    if (historyRef.current.length > 50) historyRef.current.shift();
+    historyIndexRef.current = historyRef.current.length - 1;
+  }, []);
+
+  const setSlidesWithHistory = useCallback((updater: SlideData[] | ((prev: SlideData[]) => SlideData[])) => {
+    setSlides((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      pushHistory(next);
+      return next;
+    });
+  }, [pushHistory]);
+
+  const canUndo = historyIndexRef.current > 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    setSlides(JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current])));
+  }, []);
+
+  const redo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    setSlides(JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current])));
+  }, []);
+
+  // Keyboard navigation + undo/redo
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.isContentEditable) return;
       if (e.key === "ArrowLeft") setCurrentSlide((c) => Math.max(0, c - 1));
       if (e.key === "ArrowRight") setCurrentSlide((c) => Math.min(slides.length - 1, c + 1));
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, slides.length]);
+  }, [open, slides.length, undo, redo]);
 
   const slide = slides[currentSlide];
   if (!slide) return null;
 
   const updateSlide = (index: number, updates: Partial<SlideData>) => {
-    setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, ...updates } : s)));
+    setSlidesWithHistory((prev) => prev.map((s, i) => (i === index ? { ...s, ...updates } : s)));
   };
 
   const deleteSlide = (index: number) => {
     if (slides.length <= 1) return;
     const newSlides = slides.filter((_, i) => i !== index);
-    setSlides(newSlides);
+    setSlidesWithHistory(newSlides);
     if (currentSlide >= newSlides.length) setCurrentSlide(newSlides.length - 1);
   };
 
@@ -515,7 +557,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
     const copy = JSON.parse(JSON.stringify(slides[index]));
     const newSlides = [...slides];
     newSlides.splice(index + 1, 0, copy);
-    setSlides(newSlides);
+    setSlidesWithHistory(newSlides);
     setCurrentSlide(index + 1);
   };
 
@@ -524,7 +566,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
     const newSlides = [...slides];
     const [moved] = newSlides.splice(from, 1);
     newSlides.splice(to, 0, moved);
-    setSlides(newSlides);
+    setSlidesWithHistory(newSlides);
     setCurrentSlide(to);
   };
 
@@ -536,7 +578,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
     };
     const newSlides = [...slides];
     newSlides.splice(currentSlide + 1, 0, newSlide);
-    setSlides(newSlides);
+    setSlidesWithHistory(newSlides);
     setCurrentSlide(currentSlide + 1);
     setShowAddMenu(false);
   };
@@ -641,6 +683,14 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
                 <span className="text-sm font-medium text-white truncate">{slide.title}</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-0.5 mr-2 border-r border-[#444] pr-2">
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#999] hover:text-white hover:bg-[#3c3c3c] disabled:opacity-30" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+                    <Undo2 className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#999] hover:text-white hover:bg-[#3c3c3c] disabled:opacity-30" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+                    <Redo2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
                 <Button size="sm" variant="ghost" className="h-7 text-xs text-[#ccc] hover:text-white hover:bg-[#3c3c3c] gap-1" onClick={() => duplicateSlide(currentSlide)}>
                   <Copy className="h-3 w-3" /> Duplicate
                 </Button>
@@ -688,7 +738,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
             {/* Bottom bar */}
             <div className="h-12 bg-[#2d2d2d] border-t border-[#333] flex items-center justify-between px-4 shrink-0">
               <p className="text-[11px] text-[#888]">
-                Click any text to edit · Right-click thumbnails for options · Drag to reorder
+                Click any text to edit · Ctrl+Z undo · Ctrl+Y redo · Drag to reorder
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs bg-transparent border-[#555] text-[#ccc] hover:bg-[#3c3c3c] hover:text-white">
