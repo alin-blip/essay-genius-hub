@@ -296,11 +296,12 @@ const AssignmentEditor = () => {
     setHasChanges(false);
   };
 
-  const handleGeneratePptx = async () => {
+  const handleGeneratePptx = async (theme: PptxTheme) => {
     if (!activeContent || !assignment) return;
+    setShowThemePicker(false);
+    setSelectedTheme(theme);
     setGeneratingPptx(true);
     try {
-      // Step 1: Generate slide structure
       toast({ title: "Generating slide structure..." });
       const { data, error } = await supabase.functions.invoke("generate-pptx-structure", {
         body: {
@@ -314,7 +315,7 @@ const AssignmentEditor = () => {
 
       const slides = data.slides;
 
-      // Step 2: Generate images in parallel for slides that have image_prompt
+      // Generate images in parallel
       const slidesWithPrompts = slides.filter((s: any) => s.image_prompt);
       if (slidesWithPrompts.length > 0) {
         toast({ title: `Generating ${slidesWithPrompts.length} images...` });
@@ -325,7 +326,6 @@ const AssignmentEditor = () => {
             })
           )
         );
-        
         let imgIdx = 0;
         for (const slide of slides) {
           if (slide.image_prompt) {
@@ -338,13 +338,28 @@ const AssignmentEditor = () => {
         }
       }
 
-      await exportToPptx(slides, assignment.title);
-      toast({ title: "Presentation downloaded! 🎉" });
+      setPptxSlides(slides);
+      toast({ title: "Slides ready — review before downloading" });
     } catch (err: any) {
       toast({ title: "Failed to generate presentation", description: err.message, variant: "destructive" });
     } finally {
       setGeneratingPptx(false);
     }
+  };
+
+  const handleExportPptx = async (slides: any[]) => {
+    if (!assignment || !selectedTheme) return;
+    setExportingPptx(true);
+    try {
+      await exportToPptx(slides, assignment.title, selectedTheme.colors);
+      toast({ title: "Presentation downloaded! 🎉" });
+      setPptxSlides(null);
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setExportingPptx(false);
+    }
+  };
   };
 
   if (loading || !assignment) {
