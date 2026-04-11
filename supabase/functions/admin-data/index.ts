@@ -25,7 +25,6 @@ serve(async (req) => {
     const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
     if (userError || !userData.user) throw new Error("Not authenticated");
 
-    // Verify admin
     if (!ADMIN_EMAILS.includes(userData.user.email || "")) {
       throw new Error("Unauthorized — admin access only");
     }
@@ -36,7 +35,7 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const { action, user_id, amount } = await req.json();
+    const { action, user_id, amount, assignment_id } = await req.json();
 
     if (action === "get_overview") {
       const { data: profiles, error: profError } = await serviceClient
@@ -68,7 +67,6 @@ serve(async (req) => {
     if (action === "adjust_credits") {
       if (!user_id || amount === undefined) throw new Error("user_id and amount required");
 
-      // Get current balance
       const { data: profile, error: getError } = await serviceClient
         .from("profiles")
         .select("credits_balance")
@@ -87,6 +85,39 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, new_balance: newBalance }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    if (action === "get_user_assignments") {
+      if (!user_id) throw new Error("user_id required");
+
+      const { data: assignments, error: assignError } = await serviceClient
+        .from("assignments")
+        .select("id, title, status, word_count, target_grade, assignment_type, created_at, updated_at")
+        .eq("user_id", user_id)
+        .order("created_at", { ascending: false });
+
+      if (assignError) throw new Error(assignError.message);
+
+      return new Response(
+        JSON.stringify({ assignments: assignments || [] }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
+    if (action === "delete_assignment") {
+      if (!assignment_id) throw new Error("assignment_id required");
+
+      const { error: delError } = await serviceClient
+        .from("assignments")
+        .delete()
+        .eq("id", assignment_id);
+
+      if (delError) throw new Error(delError.message);
+
+      return new Response(
+        JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
       );
     }

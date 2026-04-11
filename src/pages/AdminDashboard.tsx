@@ -5,29 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  GraduationCap,
-  Users,
-  FileText,
-  CreditCard,
-  Search,
-  ArrowLeft,
-  Plus,
-  Minus,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  GraduationCap, Users, FileText, CreditCard, Search, ArrowLeft, Plus, Minus, ExternalLink, Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,6 +36,17 @@ interface ProfileRow {
   created_at: string;
 }
 
+interface AssignmentRow {
+  id: string;
+  title: string;
+  status: string;
+  word_count: number;
+  target_grade: string;
+  assignment_type: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const AdminDashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -57,14 +56,27 @@ const AdminDashboard = () => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Credit dialog
   const [creditDialog, setCreditDialog] = useState<{ open: boolean; userId: string; name: string; current: number }>({
     open: false, userId: "", name: "", current: 0,
   });
   const [creditAmount, setCreditAmount] = useState(0);
 
+  // Assignments dialog
+  const [assignDialog, setAssignDialog] = useState<{ open: boolean; userId: string; name: string }>({
+    open: false, userId: "", name: "",
+  });
+  const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
+  const [assignLoading, setAssignLoading] = useState(false);
+
+  // Delete confirmation
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; title: string }>({
+    open: false, id: "", title: "",
+  });
+
   useEffect(() => {
     if (!user) return;
-    // Check admin via email (server-side would be better, but this is a start)
     if (ADMIN_EMAILS.includes(user.email || "")) {
       setIsAdmin(true);
       loadData();
@@ -75,8 +87,6 @@ const AdminDashboard = () => {
 
   const loadData = async () => {
     setLoading(true);
-    // Note: Admin needs service_role to see all profiles.
-    // For now, we fetch via edge function
     const { data, error } = await supabase.functions.invoke("admin-data", {
       body: { action: "get_overview" },
     });
@@ -93,11 +103,7 @@ const AdminDashboard = () => {
   const handleCreditAdjust = async (add: boolean) => {
     if (creditAmount <= 0) return;
     const { error } = await supabase.functions.invoke("admin-data", {
-      body: {
-        action: "adjust_credits",
-        user_id: creditDialog.userId,
-        amount: add ? creditAmount : -creditAmount,
-      },
+      body: { action: "adjust_credits", user_id: creditDialog.userId, amount: add ? creditAmount : -creditAmount },
     });
     if (error) {
       toast({ title: "Failed to adjust credits", variant: "destructive" });
@@ -109,13 +115,37 @@ const AdminDashboard = () => {
     loadData();
   };
 
+  const openAssignments = async (userId: string, name: string) => {
+    setAssignDialog({ open: true, userId, name });
+    setAssignLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-data", {
+      body: { action: "get_user_assignments", user_id: userId },
+    });
+    if (error || data?.error) {
+      toast({ title: "Failed to load assignments", variant: "destructive" });
+      setAssignLoading(false);
+      return;
+    }
+    setAssignments(data.assignments || []);
+    setAssignLoading(false);
+  };
+
+  const handleDeleteAssignment = async () => {
+    const { error } = await supabase.functions.invoke("admin-data", {
+      body: { action: "delete_assignment", assignment_id: deleteConfirm.id },
+    });
+    if (error) {
+      toast({ title: "Failed to delete assignment", variant: "destructive" });
+    } else {
+      toast({ title: "Assignment deleted" });
+      setAssignments((prev) => prev.filter((a) => a.id !== deleteConfirm.id));
+    }
+    setDeleteConfirm({ open: false, id: "", title: "" });
+  };
+
   const filtered = profiles.filter((p) => {
     const q = search.toLowerCase();
-    return (
-      (p.full_name || "").toLowerCase().includes(q) ||
-      (p.university || "").toLowerCase().includes(q) ||
-      p.user_id.includes(q)
-    );
+    return (p.full_name || "").toLowerCase().includes(q) || (p.university || "").toLowerCase().includes(q) || p.user_id.includes(q);
   });
 
   if (!isAdmin) return null;
@@ -181,12 +211,7 @@ const AdminDashboard = () => {
               <CardTitle>Users</CardTitle>
               <div className="relative w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8"
-                />
+                <Input placeholder="Search users..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-8" />
               </div>
             </div>
           </CardHeader>
@@ -210,36 +235,21 @@ const AdminDashboard = () => {
                     <TableCell className="font-medium">{p.full_name || "—"}</TableCell>
                     <TableCell>{p.university || "—"}</TableCell>
                     <TableCell>{p.university_level || "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{p.subscription_plan}</Badge>
-                    </TableCell>
+                    <TableCell><Badge variant="secondary">{p.subscription_plan}</Badge></TableCell>
                     <TableCell>{p.credits_balance.toLocaleString()}</TableCell>
                     <TableCell>
-                      {p.has_manager_addon ? (
-                        <Badge variant="default">Active</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      {p.has_manager_addon ? <Badge variant="default">Active</Badge> : <span className="text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="text-xs">
-                      {new Date(p.created_at).toLocaleDateString()}
-                    </TableCell>
+                    <TableCell className="text-xs">{new Date(p.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() =>
-                          setCreditDialog({
-                            open: true,
-                            userId: p.user_id,
-                            name: p.full_name || "User",
-                            current: p.credits_balance,
-                          })
-                        }
-                      >
-                        <CreditCard className="h-3 w-3 mr-1" /> Credits
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => setCreditDialog({ open: true, userId: p.user_id, name: p.full_name || "User", current: p.credits_balance })}>
+                          <CreditCard className="h-3 w-3 mr-1" /> Credits
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => openAssignments(p.user_id, p.full_name || "User")}>
+                          <FileText className="h-3 w-3 mr-1" /> Assignments
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -256,12 +266,7 @@ const AdminDashboard = () => {
             <DialogTitle>Adjust Credits — {creditDialog.name}</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">Current balance: {creditDialog.current.toLocaleString()}</p>
-          <Input
-            type="number"
-            placeholder="Amount"
-            value={creditAmount || ""}
-            onChange={(e) => setCreditAmount(Number(e.target.value))}
-          />
+          <Input type="number" placeholder="Amount" value={creditAmount || ""} onChange={(e) => setCreditAmount(Number(e.target.value))} />
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => handleCreditAdjust(false)} disabled={creditAmount <= 0}>
               <Minus className="h-4 w-4 mr-1" /> Deduct
@@ -272,6 +277,76 @@ const AdminDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Assignments dialog */}
+      <Dialog open={assignDialog.open} onOpenChange={(o) => setAssignDialog((prev) => ({ ...prev, open: o }))}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Assignments — {assignDialog.name}</DialogTitle>
+          </DialogHeader>
+          {assignLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+            </div>
+          ) : assignments.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No assignments found.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Grade</TableHead>
+                  <TableHead>Words</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {assignments.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium max-w-[200px] truncate">{a.title}</TableCell>
+                    <TableCell className="capitalize">{a.assignment_type}</TableCell>
+                    <TableCell className="capitalize">{a.target_grade}</TableCell>
+                    <TableCell>{a.word_count.toLocaleString()}</TableCell>
+                    <TableCell><Badge variant="secondary" className="capitalize">{a.status}</Badge></TableCell>
+                    <TableCell className="text-xs">{new Date(a.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/assignment/${a.id}`)}>
+                          <ExternalLink className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => setDeleteConfirm({ open: true, id: a.id, title: a.title })}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={deleteConfirm.open} onOpenChange={(o) => setDeleteConfirm((prev) => ({ ...prev, open: o }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assignment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{deleteConfirm.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAssignment} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
