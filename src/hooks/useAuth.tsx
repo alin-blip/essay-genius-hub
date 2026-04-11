@@ -97,17 +97,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Friend referral system
         const friendRefCode = localStorage.getItem("friend_ref_code");
         if (friendRefCode) {
-          // Look up referrer by referral_code
-          const { data: referrerProfile } = await supabase
-            .from("profiles")
-            .select("user_id, referral_code")
-            .eq("referral_code", friendRefCode)
-            .maybeSingle();
+          // Use secure RPC to look up referrer
+          const { data: referrerId } = await supabase.rpc("lookup_referrer_by_code", { _code: friendRefCode });
 
-          if (referrerProfile && referrerProfile.user_id !== session.user.id) {
+          if (referrerId && referrerId !== session.user.id) {
             await supabase.from("friend_referrals").upsert(
               {
-                referrer_id: referrerProfile.user_id,
+                referrer_id: referrerId,
                 referred_id: session.user.id,
                 referral_code: friendRefCode,
                 status: "pending",
