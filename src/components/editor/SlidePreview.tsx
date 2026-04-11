@@ -1,10 +1,10 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, ChevronLeft, ChevronRight, Pencil, Check, X, Trash2, Presentation } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Download, ChevronLeft, ChevronRight, Pencil, Check, X, Trash2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import type { PptxTheme } from "@/lib/pptx-themes";
 
@@ -25,6 +25,184 @@ interface SlidePreviewProps {
   exporting?: boolean;
 }
 
+/* ── Slide renderer (used for both main canvas & thumbnails) ── */
+function SlideCanvas({ slide, theme, className, isThumbnail }: {
+  slide: SlideData;
+  theme: PptxTheme;
+  className?: string;
+  isThumbnail?: boolean;
+}) {
+  const isDark = slide.type === "title" || slide.type === "conclusion" || slide.type === "quote";
+  const t = (px: number) => isThumbnail ? px * 0.35 : px;
+
+  return (
+    <div
+      className={cn("relative w-full h-full overflow-hidden", className)}
+      style={{ backgroundColor: `#${isDark ? theme.colors.dark : theme.colors.light}` }}
+    >
+      {/* Header bar for non-dark slides */}
+      {!isDark && (
+        <div
+          className="flex items-center"
+          style={{
+            backgroundColor: `#${theme.colors.primary}`,
+            height: isThumbnail ? 6 : 40,
+            paddingLeft: isThumbnail ? 4 : 24,
+          }}
+        >
+          <span
+            className="font-semibold truncate"
+            style={{
+              color: `#${theme.colors.white}`,
+              fontSize: isThumbnail ? 5 : 15,
+              lineHeight: 1.2,
+            }}
+          >
+            {slide.title}
+          </span>
+        </div>
+      )}
+
+      {/* Slide body */}
+      <div
+        style={{
+          padding: isThumbnail ? "4px 5px" : "24px 32px",
+          paddingTop: isDark ? (isThumbnail ? 10 : 48) : (isThumbnail ? 3 : 16),
+        }}
+      >
+        {/* Title slide */}
+        {slide.type === "title" && (
+          <div className="flex flex-col justify-center" style={{ gap: isThumbnail ? 2 : 12 }}>
+            <div style={{ height: isThumbnail ? 2 : 5, width: isThumbnail ? 16 : 80, borderRadius: 4, backgroundColor: `#${theme.colors.accent}` }} />
+            <h2 className="font-bold leading-tight" style={{ color: `#${theme.colors.white}`, fontSize: isThumbnail ? 8 : 28 }}>
+              {slide.title}
+            </h2>
+            {slide.content?.subtitle && (
+              <p style={{ color: `#${theme.colors.muted}`, fontSize: isThumbnail ? 5 : 14 }}>{slide.content.subtitle}</p>
+            )}
+            {slide.content?.author && (
+              <p style={{ color: `#${theme.colors.accent}`, fontSize: isThumbnail ? 4 : 12, marginTop: isThumbnail ? 1 : 8 }}>{slide.content.author}</p>
+            )}
+          </div>
+        )}
+
+        {/* Conclusion */}
+        {slide.type === "conclusion" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: isThumbnail ? 2 : 10 }}>
+            <div style={{ height: isThumbnail ? 2 : 5, width: isThumbnail ? 16 : 80, borderRadius: 4, backgroundColor: `#${theme.colors.accent}` }} />
+            <h2 className="font-bold" style={{ color: `#${theme.colors.white}`, fontSize: isThumbnail ? 7 : 22 }}>{slide.title}</h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: isThumbnail ? 1 : 6, marginTop: isThumbnail ? 1 : 8 }}>
+              {slide.content?.bullets?.map((b: string, i: number) => (
+                <p key={i} className="flex items-start" style={{ color: `#${theme.colors.light}`, fontSize: isThumbnail ? 4 : 13, gap: isThumbnail ? 2 : 8 }}>
+                  <span className="shrink-0 rounded-full" style={{ backgroundColor: `#${theme.colors.accent}`, width: isThumbnail ? 2 : 6, height: isThumbnail ? 2 : 6, marginTop: isThumbnail ? 1 : 4 }} />
+                  {b}
+                </p>
+              ))}
+            </div>
+            {slide.content?.closing && (
+              <p className="italic" style={{ color: `#${theme.colors.accent}`, fontSize: isThumbnail ? 4 : 12, marginTop: isThumbnail ? 1 : 8 }}>{slide.content.closing}</p>
+            )}
+          </div>
+        )}
+
+        {/* Quote */}
+        {slide.type === "quote" && (
+          <div
+            className="flex flex-col justify-center rounded-lg"
+            style={{
+              backgroundColor: `#${theme.colors.primary}`,
+              padding: isThumbnail ? 4 : 28,
+              marginTop: isThumbnail ? 2 : 12,
+            }}
+          >
+            <span className="font-serif leading-none" style={{ color: `#${theme.colors.accent}`, fontSize: isThumbnail ? 14 : 56 }}>"</span>
+            <p className="italic leading-relaxed" style={{ color: `#${theme.colors.white}`, fontSize: isThumbnail ? 5 : 16, marginTop: isThumbnail ? 0 : 4 }}>{slide.content?.quote}</p>
+            {slide.content?.attribution && (
+              <p className="font-medium" style={{ color: `#${theme.colors.accent}`, fontSize: isThumbnail ? 4 : 12, marginTop: isThumbnail ? 2 : 16 }}>— {slide.content.attribution}</p>
+            )}
+          </div>
+        )}
+
+        {/* Content / image_content */}
+        {(slide.type === "content" || slide.type === "image_content") && (
+          <div className="flex" style={{ gap: isThumbnail ? 3 : 16 }}>
+            <p className="leading-relaxed flex-1" style={{ color: `#${theme.colors.dark}`, fontSize: isThumbnail ? 5 : 14 }}>
+              {slide.content?.text}
+            </p>
+            {slide.image_data && (
+              <div className="shrink-0 rounded-lg overflow-hidden shadow-md" style={{ width: isThumbnail ? "30%" : "35%", border: `1px solid #${theme.colors.muted}40` }}>
+                <img src={slide.image_data} alt="" className="w-full h-auto object-cover" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Bullet list */}
+        {slide.type === "bullet_list" && (
+          <div className="flex" style={{ gap: isThumbnail ? 3 : 16 }}>
+            <div className="flex-1" style={{ display: "flex", flexDirection: "column", gap: isThumbnail ? 1.5 : 8 }}>
+              {slide.content?.bullets?.map((b: string, i: number) => (
+                <p key={i} className="flex items-start" style={{ color: `#${theme.colors.dark}`, fontSize: isThumbnail ? 5 : 14, gap: isThumbnail ? 2 : 8 }}>
+                  <span className="shrink-0 rounded-full" style={{ backgroundColor: `#${theme.colors.accent}`, width: isThumbnail ? 2 : 6, height: isThumbnail ? 2 : 6, marginTop: isThumbnail ? 1 : 5 }} />
+                  {b}
+                </p>
+              ))}
+            </div>
+            {slide.image_data && (
+              <div className="shrink-0 rounded-lg overflow-hidden shadow-md" style={{ width: isThumbnail ? "30%" : "35%", border: `1px solid #${theme.colors.muted}40` }}>
+                <img src={slide.image_data} alt="" className="w-full h-auto object-cover" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Stats */}
+        {slide.type === "stats" && (
+          <div className="flex" style={{ gap: isThumbnail ? 2 : 12, marginTop: isThumbnail ? 2 : 12 }}>
+            {slide.content?.stats?.slice(0, 4).map((st: any, i: number) => (
+              <div
+                key={i}
+                className="flex-1 rounded-lg text-center shadow-sm"
+                style={{
+                  backgroundColor: `#${theme.colors.white}`,
+                  border: `1px solid #${theme.colors.muted}30`,
+                  padding: isThumbnail ? 2 : 16,
+                }}
+              >
+                <p className="font-bold" style={{ color: `#${theme.colors.accent}`, fontSize: isThumbnail ? 6 : 24 }}>{st.value}</p>
+                <p className="leading-tight" style={{ color: `#${theme.colors.dark}`, fontSize: isThumbnail ? 3 : 11, marginTop: isThumbnail ? 1 : 4 }}>{st.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Two column */}
+        {slide.type === "two_column" && (
+          <div className="grid grid-cols-2" style={{ gap: isThumbnail ? 2 : 12, marginTop: isThumbnail ? 1 : 8 }}>
+            {(["left", "right"] as const).map((side) => (
+              <div
+                key={side}
+                className="rounded-lg shadow-sm"
+                style={{ backgroundColor: `#${theme.colors.white}`, border: `1px solid #${theme.colors.muted}30`, padding: isThumbnail ? 3 : 16 }}
+              >
+                <p className="font-semibold" style={{ color: `#${theme.colors.primary}`, fontSize: isThumbnail ? 4 : 13, marginBottom: isThumbnail ? 1 : 8 }}>{slide.content?.[side]?.title}</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: isThumbnail ? 1 : 4 }}>
+                  {slide.content?.[side]?.bullets?.map((b: string, i: number) => (
+                    <p key={i} className="flex items-start" style={{ color: `#${theme.colors.dark}`, fontSize: isThumbnail ? 3 : 11, gap: isThumbnail ? 1 : 6 }}>
+                      <span className="shrink-0 rounded-full" style={{ backgroundColor: `#${theme.colors.accent}`, width: isThumbnail ? 1.5 : 5, height: isThumbnail ? 1.5 : 5, marginTop: isThumbnail ? 1 : 3 }} />
+                      {b}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SlidePreview({ open, slides: initialSlides, theme, onClose, onExport, exporting }: SlidePreviewProps) {
   const [slides, setSlides] = useState<SlideData[]>(initialSlides);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -32,13 +210,24 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
   const [editingContent, setEditingContent] = useState(false);
   const [editText, setEditText] = useState("");
 
-  // Sync slides when new data arrives
   useEffect(() => {
     setSlides(initialSlides);
     setCurrentSlide(0);
     setEditingTitle(false);
     setEditingContent(false);
   }, [initialSlides]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => {
+      if (editingTitle || editingContent) return;
+      if (e.key === "ArrowLeft") setCurrentSlide((c) => Math.max(0, c - 1));
+      if (e.key === "ArrowRight") setCurrentSlide((c) => Math.min(slides.length - 1, c + 1));
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, slides.length, editingTitle, editingContent]);
 
   const slide = slides[currentSlide];
   if (!slide) return null;
@@ -85,79 +274,86 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
     setEditingContent(false);
   };
 
-  const isDarkSlide = slide.type === "title" || slide.type === "conclusion" || slide.type === "quote";
-
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[92vh] p-0 gap-0 overflow-hidden">
-        {/* Top bar */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/30">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Presentation className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <DialogTitle className="text-base">Slide Preview</DialogTitle>
-              <DialogDescription className="text-xs">
-                {slides.length} slides · {theme.name}
-              </DialogDescription>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-medium tabular-nums">
-              {currentSlide + 1} / {slides.length}
-            </span>
-          </div>
-        </div>
+      <DialogContent className="sm:max-w-[95vw] max-w-[95vw] h-[92vh] p-0 gap-0 overflow-hidden border-none bg-[#1e1e1e]">
+        {/* Hidden accessible title */}
+        <DialogTitle className="sr-only">Slide Preview</DialogTitle>
+        <DialogDescription className="sr-only">{slides.length} slides · {theme.name}</DialogDescription>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Thumbnail sidebar */}
-          <ScrollArea className="w-[140px] border-r bg-muted/20 p-2 shrink-0">
-            <div className="flex flex-col gap-2">
-              {slides.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => { setCurrentSlide(i); setEditingTitle(false); setEditingContent(false); }}
-                  className={cn(
-                    "relative rounded-lg overflow-hidden border-2 transition-all aspect-video w-full group",
-                    i === currentSlide
-                      ? "border-primary shadow-md ring-2 ring-primary/20"
-                      : "border-transparent hover:border-muted-foreground/30"
-                  )}
-                  style={{
-                    backgroundColor: `#${s.type === "title" || s.type === "conclusion" || s.type === "quote" ? theme.colors.dark : theme.colors.light}`
-                  }}
-                >
-                  {/* Mini header bar */}
-                  {s.type !== "title" && s.type !== "conclusion" && s.type !== "quote" && (
-                    <div className="h-2" style={{ backgroundColor: `#${theme.colors.primary}` }} />
-                  )}
-                  <div className="px-1.5 py-1">
-                    <p className="text-[7px] font-semibold leading-tight truncate" style={{
-                      color: `#${s.type === "title" || s.type === "conclusion" ? theme.colors.white : theme.colors.dark}`
-                    }}>
-                      {s.title}
-                    </p>
-                  </div>
-                  <span className="absolute bottom-0.5 right-1 text-[8px] font-medium opacity-50" style={{
-                    color: `#${s.type === "title" || s.type === "conclusion" || s.type === "quote" ? theme.colors.muted : theme.colors.dark}`
-                  }}>
-                    {i + 1}
-                  </span>
-                </button>
-              ))}
+        <div className="flex h-full">
+          {/* ── Thumbnail sidebar ── */}
+          <div className="w-[180px] bg-[#252526] border-r border-[#333] flex flex-col shrink-0">
+            <div className="px-3 py-3 border-b border-[#333]">
+              <p className="text-[11px] font-medium text-[#999] uppercase tracking-wider">Slides</p>
             </div>
-          </ScrollArea>
+            <ScrollArea className="flex-1 p-2">
+              <div className="flex flex-col gap-2">
+                {slides.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setCurrentSlide(i); setEditingTitle(false); setEditingContent(false); }}
+                    className={cn(
+                      "relative rounded-md overflow-hidden transition-all aspect-video w-full group border-2",
+                      i === currentSlide
+                        ? "border-blue-500 shadow-lg shadow-blue-500/20"
+                        : "border-transparent hover:border-[#555]"
+                    )}
+                  >
+                    <SlideCanvas slide={s} theme={theme} isThumbnail />
+                  </button>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
 
-          {/* Main area */}
+          {/* ── Main area ── */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Slide canvas */}
-            <div className="flex-1 flex items-center justify-center p-6 bg-muted/10 relative">
-              {/* Navigation arrows */}
+            {/* Top toolbar */}
+            <div className="h-12 bg-[#2d2d2d] border-b border-[#333] flex items-center justify-between px-4 shrink-0">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                {editingTitle ? (
+                  <div className="flex items-center gap-2 flex-1 max-w-md">
+                    <Input
+                      value={slide.title}
+                      onChange={(e) => updateSlide(currentSlide, { title: e.target.value })}
+                      className="text-sm h-7 bg-[#3c3c3c] border-[#555] text-white"
+                      autoFocus
+                      onKeyDown={(e) => e.key === "Enter" && setEditingTitle(false)}
+                    />
+                    <Button size="sm" variant="ghost" onClick={() => setEditingTitle(false)} className="h-7 w-7 p-0 text-green-400 hover:text-green-300 hover:bg-[#3c3c3c]">
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium text-white truncate">{slide.title}</span>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingTitle(true)} className="h-6 w-6 p-0 text-[#888] hover:text-white hover:bg-[#3c3c3c] shrink-0">
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                {!editingContent && slide.type !== "stats" && slide.type !== "two_column" && (
+                  <Button variant="ghost" size="sm" onClick={startEditContent} className="h-7 text-xs text-[#ccc] hover:text-white hover:bg-[#3c3c3c] gap-1">
+                    <Pencil className="h-3 w-3" /> Edit
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-red-400 hover:text-red-300 hover:bg-[#3c3c3c]" onClick={() => deleteSlide(currentSlide)} disabled={slides.length <= 1}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Canvas area */}
+            <div className="flex-1 flex items-center justify-center relative bg-[#1e1e1e] p-8 overflow-hidden">
+              {/* Nav arrows */}
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute left-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background z-10"
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-black/40 text-white/70 hover:bg-black/60 hover:text-white backdrop-blur-sm z-10"
                 onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
                 disabled={currentSlide === 0}
               >
@@ -166,7 +362,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-2 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 shadow-sm backdrop-blur-sm hover:bg-background z-10"
+                className="absolute right-3 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-black/40 text-white/70 hover:bg-black/60 hover:text-white backdrop-blur-sm z-10"
                 onClick={() => setCurrentSlide(Math.min(slides.length - 1, currentSlide + 1))}
                 disabled={currentSlide === slides.length - 1}
               >
@@ -174,204 +370,46 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
               </Button>
 
               {/* Slide card */}
-              <div
-                className="rounded-xl overflow-hidden shadow-2xl border border-black/10 w-full max-w-[640px] aspect-video relative"
-                style={{ backgroundColor: `#${isDarkSlide ? theme.colors.dark : theme.colors.light}` }}
-              >
-                {/* Header bar */}
-                {!isDarkSlide && (
-                  <div className="h-[10%] flex items-center px-[5%]" style={{ backgroundColor: `#${theme.colors.primary}` }}>
-                    <span className="font-semibold text-sm truncate" style={{ color: `#${theme.colors.white}` }}>{slide.title}</span>
-                  </div>
-                )}
+              <div className="w-full max-w-[780px] aspect-video rounded-lg overflow-hidden shadow-2xl shadow-black/50 ring-1 ring-white/10">
+                <SlideCanvas slide={slide} theme={theme} />
+              </div>
 
-                <div className="p-[5%] flex flex-col gap-[2%] h-full" style={{ paddingTop: isDarkSlide ? "12%" : "3%" }}>
-                  {slide.type === "title" && (
-                    <div className="flex flex-col justify-center flex-1 gap-3">
-                      <div className="h-1 w-20 rounded-full" style={{ backgroundColor: `#${theme.colors.accent}` }} />
-                      <h2 className="text-2xl font-bold leading-tight" style={{ color: `#${theme.colors.white}` }}>{slide.title}</h2>
-                      {slide.content?.subtitle && (
-                        <p className="text-sm" style={{ color: `#${theme.colors.muted}` }}>{slide.content.subtitle}</p>
-                      )}
-                      {slide.content?.author && (
-                        <p className="text-xs mt-2" style={{ color: `#${theme.colors.accent}` }}>{slide.content.author}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {slide.type === "conclusion" && (
-                    <div className="flex flex-col gap-2">
-                      <div className="h-1 w-20 rounded-full" style={{ backgroundColor: `#${theme.colors.accent}` }} />
-                      <h2 className="text-xl font-bold" style={{ color: `#${theme.colors.white}` }}>{slide.title}</h2>
-                      <div className="mt-2 space-y-1.5">
-                        {slide.content?.bullets?.map((b: string, i: number) => (
-                          <p key={i} className="text-xs flex items-start gap-2" style={{ color: `#${theme.colors.light}` }}>
-                            <span className="mt-0.5 h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: `#${theme.colors.accent}` }} />
-                            {b}
-                          </p>
-                        ))}
-                      </div>
-                      {slide.content?.closing && (
-                        <p className="text-xs italic mt-3" style={{ color: `#${theme.colors.accent}` }}>{slide.content.closing}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {slide.type === "quote" && (
-                    <div className="flex flex-col justify-center flex-1 rounded-lg p-6" style={{ backgroundColor: `#${theme.colors.primary}` }}>
-                      <span className="text-5xl font-serif leading-none" style={{ color: `#${theme.colors.accent}` }}>"</span>
-                      <p className="text-base italic leading-relaxed mt-1" style={{ color: `#${theme.colors.white}` }}>{slide.content?.quote}</p>
-                      {slide.content?.attribution && (
-                        <p className="text-xs mt-4 font-medium" style={{ color: `#${theme.colors.accent}` }}>— {slide.content.attribution}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {(slide.type === "content" || slide.type === "image_content") && (
-                    <div className={cn("flex gap-4", slide.image_data ? "items-start" : "")}>
-                      <p className={cn("text-xs leading-relaxed", slide.image_data ? "flex-1" : "")} style={{ color: `#${theme.colors.dark}` }}>
-                        {slide.content?.text}
-                      </p>
-                      {slide.image_data && (
-                        <div className="w-1/3 shrink-0 rounded-lg overflow-hidden shadow-md border">
-                          <img src={slide.image_data} alt="" className="w-full h-auto object-cover" />
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {slide.type === "bullet_list" && (
-                    <div className={cn("flex gap-4", slide.image_data ? "" : "")}>
-                      <div className={cn("space-y-1.5", slide.image_data ? "flex-1" : "w-full")}>
-                        {slide.content?.bullets?.map((b: string, i: number) => (
-                          <p key={i} className="text-xs flex items-start gap-2" style={{ color: `#${theme.colors.dark}` }}>
-                            <span className="mt-0.5 h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: `#${theme.colors.accent}` }} />
-                            {b}
-                          </p>
-                        ))}
-                      </div>
-                      {slide.image_data && (
-                        <div className="w-1/3 shrink-0 rounded-lg overflow-hidden shadow-md border">
-                          <img src={slide.image_data} alt="" className="w-full h-auto object-cover" />
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {slide.type === "stats" && (
-                    <div className="flex gap-3 mt-2">
-                      {slide.content?.stats?.slice(0, 4).map((st: any, i: number) => (
-                        <div
-                          key={i}
-                          className="flex-1 rounded-lg p-3 text-center shadow-sm"
-                          style={{ backgroundColor: `#${theme.colors.white}`, border: `1px solid #${theme.colors.muted}30` }}
-                        >
-                          <p className="text-xl font-bold" style={{ color: `#${theme.colors.accent}` }}>{st.value}</p>
-                          <p className="text-[10px] mt-1 leading-tight" style={{ color: `#${theme.colors.dark}` }}>{st.label}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {slide.type === "two_column" && (
-                    <div className="grid grid-cols-2 gap-3 mt-1">
-                      {(["left", "right"] as const).map((side) => (
-                        <div
-                          key={side}
-                          className="rounded-lg p-3 shadow-sm"
-                          style={{ backgroundColor: `#${theme.colors.white}`, border: `1px solid #${theme.colors.muted}30` }}
-                        >
-                          <p className="text-xs font-semibold mb-2" style={{ color: `#${theme.colors.primary}` }}>{slide.content?.[side]?.title}</p>
-                          <div className="space-y-1">
-                            {slide.content?.[side]?.bullets?.map((b: string, i: number) => (
-                              <p key={i} className="text-[10px] flex items-start gap-1.5" style={{ color: `#${theme.colors.dark}` }}>
-                                <span className="mt-0.5 h-1 w-1 rounded-full shrink-0" style={{ backgroundColor: `#${theme.colors.accent}` }} />
-                                {b}
-                              </p>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Slide type badge */}
-                <span
-                  className="absolute top-2 right-2 text-[9px] px-1.5 py-0.5 font-mono rounded-md"
-                  style={{
-                    backgroundColor: `#${theme.colors.primary}20`,
-                    color: `#${isDarkSlide ? theme.colors.accent : theme.colors.primary}`,
-                  }}
-                >
-                  {slide.type}
-                </span>
+              {/* Slide counter pill */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-sm text-white/80 text-xs font-medium px-3 py-1 rounded-full tabular-nums">
+                {currentSlide + 1} / {slides.length}
               </div>
             </div>
 
-            {/* Bottom edit bar */}
-            <div className="border-t bg-background p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                {editingTitle ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <Input
-                      value={slide.title}
-                      onChange={(e) => updateSlide(currentSlide, { title: e.target.value })}
-                      className="text-sm h-8"
-                      autoFocus
-                    />
-                    <Button size="sm" variant="ghost" onClick={() => setEditingTitle(false)} className="h-8 w-8 p-0">
-                      <Check className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 flex-1 min-w-0">
-                    <span className="text-sm font-semibold truncate">{slide.title}</span>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingTitle(true)} className="h-7 w-7 p-0 shrink-0 text-muted-foreground hover:text-foreground">
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-                <div className="flex items-center gap-1 shrink-0">
-                  {!editingContent && slide.type !== "stats" && slide.type !== "two_column" && (
-                    <Button variant="outline" size="sm" onClick={startEditContent} className="h-8 text-xs">
-                      <Pencil className="h-3 w-3 mr-1" /> Edit Content
-                    </Button>
-                  )}
-                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => deleteSlide(currentSlide)} disabled={slides.length <= 1}>
-                    <Trash2 className="h-3.5 w-3.5" />
+            {/* Edit content panel */}
+            {editingContent && (
+              <div className="border-t border-[#333] bg-[#252526] p-4 shrink-0">
+                <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={4} className="text-xs resize-none bg-[#1e1e1e] border-[#444] text-white mb-2" />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={saveContent} className="h-7 text-xs gap-1">
+                    <Check className="h-3 w-3" /> Save
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingContent(false)} className="h-7 text-xs text-[#999] hover:text-white hover:bg-[#3c3c3c] gap-1">
+                    <X className="h-3 w-3" /> Cancel
                   </Button>
                 </div>
               </div>
+            )}
 
-              {editingContent && (
-                <div className="space-y-2">
-                  <Textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={4} className="text-xs resize-none" />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={saveContent} className="h-7 text-xs">
-                      <Check className="h-3 w-3 mr-1" /> Save
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingContent(false)} className="h-7 text-xs">
-                      <X className="h-3 w-3 mr-1" /> Cancel
-                    </Button>
-                  </div>
-                </div>
-              )}
+            {/* Bottom bar */}
+            <div className="h-12 bg-[#2d2d2d] border-t border-[#333] flex items-center justify-between px-4 shrink-0">
+              <p className="text-[11px] text-[#888]">
+                ← → navigate · Click thumbnail to jump · {theme.name} theme
+              </p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs bg-transparent border-[#555] text-[#ccc] hover:bg-[#3c3c3c] hover:text-white">
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={() => onExport(slides)} disabled={exporting} className="h-8 text-xs gap-1.5">
+                  <Download className="h-3.5 w-3.5" />
+                  {exporting ? "Exporting…" : "Download PPTX"}
+                </Button>
+              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/20">
-          <p className="text-xs text-muted-foreground">
-            Click any thumbnail to navigate · Edit titles and content before exporting
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={() => onExport(slides)} disabled={exporting} className="gap-1.5">
-              <Download className="h-4 w-4" />
-              {exporting ? "Exporting..." : "Download PPTX"}
-            </Button>
           </div>
         </div>
       </DialogContent>
