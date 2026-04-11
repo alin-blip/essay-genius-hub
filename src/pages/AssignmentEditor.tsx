@@ -4,6 +4,7 @@ import { Tables } from "@/integrations/supabase/types";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Presentation } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -35,6 +36,7 @@ import { useToast } from "@/hooks/use-toast";
 import { exportToDocx } from "@/lib/export-docx";
 import { exportToPdf } from "@/lib/export-pdf";
 import TipTapEditor from "@/components/editor/TipTapEditor";
+import { exportToPptx } from "@/lib/export-pptx";
 import AiDetectionScore, { type DetectionResult, type SentenceAnalysis } from "@/components/editor/AiDetectionScore";
 import ReferenceValidator from "@/components/editor/ReferenceValidator";
 import GenerationReport from "@/components/editor/GenerationReport";
@@ -67,6 +69,7 @@ const AssignmentEditor = () => {
   const [detectionSentences, setDetectionSentences] = useState<SentenceAnalysis[]>([]);
   const [showAiHighlights, setShowAiHighlights] = useState(false);
   const [showHumanizeConfirm, setShowHumanizeConfirm] = useState(false);
+  const [generatingPptx, setGeneratingPptx] = useState(false);
   const MAX_PASSES = 3;
   const TARGET_SCORE = 15;
   const stopHumanizeRef = useRef(false);
@@ -286,6 +289,29 @@ const AssignmentEditor = () => {
     setHasChanges(false);
   };
 
+  const handleGeneratePptx = async () => {
+    if (!activeContent || !assignment) return;
+    setGeneratingPptx(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pptx-structure", {
+        body: {
+          content: activeContent,
+          title: assignment.title,
+          module_name: assignment.module_name,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      await exportToPptx(data.slides, assignment.title);
+      toast({ title: "Presentation downloaded! 🎉" });
+    } catch (err: any) {
+      toast({ title: "Failed to generate presentation", description: err.message, variant: "destructive" });
+    } finally {
+      setGeneratingPptx(false);
+    }
+  };
+
   if (loading || !assignment) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -442,6 +468,16 @@ const AssignmentEditor = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGeneratePptx}
+              disabled={generatingPptx}
+            >
+              <Presentation className="h-4 w-4 mr-1" />
+              {generatingPptx ? "Generating..." : "Generate PPTX"}
+            </Button>
           </CardContent>
         </Card>
 
