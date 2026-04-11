@@ -360,7 +360,6 @@ const AssignmentEditor = () => {
       setExportingPptx(false);
     }
   };
-  };
 
   if (loading || !assignment) {
     return (
