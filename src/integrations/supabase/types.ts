@@ -559,6 +559,7 @@ export type Database = {
         Args: { _affiliate_user_id: string; _referred_user_id: string }
         Returns: boolean
       }
+      lookup_referrer_by_code: { Args: { _code: string }; Returns: string }
       move_to_dlq: {
         Args: {
           dlq_name: string
