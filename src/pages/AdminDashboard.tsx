@@ -116,6 +116,18 @@ const AdminDashboard = () => {
     setProfiles(data.profiles || []);
     setStats(data.stats || { totalUsers: 0, totalAssignments: 0, totalCreditsUsed: 0 });
     setLoading(false);
+    loadFeedback();
+  };
+
+  const loadFeedback = async () => {
+    setFeedbackLoading(true);
+    const { data, error } = await supabase.functions.invoke("admin-data", {
+      body: { action: "get_feedback" },
+    });
+    if (!error && !data?.error) {
+      setFeedbackList(data.feedback || []);
+    }
+    setFeedbackLoading(false);
   };
 
   const handleCreditAdjust = async (add: boolean) => {
