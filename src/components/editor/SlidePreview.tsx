@@ -12,7 +12,7 @@ import {
 import {
   Download, ChevronLeft, ChevronRight, Trash2, Plus,
   ImagePlus, Upload, Wand2, GripVertical, Copy,
-  ArrowUp, ArrowDown, X,
+  ArrowUp, ArrowDown, X, Undo2, Redo2,
 } from "lucide-react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
