@@ -521,7 +521,7 @@ const AssignmentEditor = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleGeneratePptx}
+              onClick={() => setShowThemePicker(true)}
               disabled={generatingPptx}
             >
               <Presentation className="h-4 w-4 mr-1" />
