@@ -289,6 +289,29 @@ const AssignmentEditor = () => {
     setHasChanges(false);
   };
 
+  const handleGeneratePptx = async () => {
+    if (!activeContent || !assignment) return;
+    setGeneratingPptx(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-pptx-structure", {
+        body: {
+          content: activeContent,
+          title: assignment.title,
+          module_name: assignment.module_name,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      await exportToPptx(data.slides, assignment.title);
+      toast({ title: "Presentation downloaded! 🎉" });
+    } catch (err: any) {
+      toast({ title: "Failed to generate presentation", description: err.message, variant: "destructive" });
+    } finally {
+      setGeneratingPptx(false);
+    }
+  };
+
   if (loading || !assignment) {
     return (
       <div className="min-h-screen flex items-center justify-center">
