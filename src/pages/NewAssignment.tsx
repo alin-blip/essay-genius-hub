@@ -331,7 +331,7 @@ const NewAssignment = () => {
     } catch (err: any) {
       console.error("Generation error:", err);
       const msg = err.message || "";
-      const isTimeout = err.name === "AbortError" || msg.includes("Failed to send") || msg.includes("504") || msg.includes("TimeoutError") || msg.includes("network") || msg.includes("aborted");
+      const isTimeout = err.name === "AbortError" || msg.includes("Failed to send") || msg.includes("Failed to fetch") || msg.includes("504") || msg.includes("TimeoutError") || msg.includes("network") || msg.includes("aborted");
       
       // On timeout, check if the assignment was actually created server-side
       if (isTimeout && user) {
