@@ -84,6 +84,10 @@ const AdminDashboard = () => {
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [assignLoading, setAssignLoading] = useState(false);
 
+  // Feedback
+  const [feedbackList, setFeedbackList] = useState<FeedbackRow[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
+
   // Delete confirmation
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; title: string }>({
     open: false, id: "", title: "",
