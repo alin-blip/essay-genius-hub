@@ -1,41 +1,56 @@
 
 
-# Admin Panel — View & Manage User Assignments
+# Sistem de Feedback — 100 credite per feedback
 
-## What we're building
+## Ce construim
 
-Add a "View Assignments" action per user in the admin panel. Clicking it opens a panel/dialog showing all assignments for that user, with status, word count, date, and a link to open the assignment in the editor.
+1. **Tabel `feedback`** — stochează feedbackul utilizatorilor (rating, mesaj, tip feedback)
+2. **Pop-up pe Dashboard** — apare periodic (ex: după fiecare 3 assignments sau la fiecare 7 zile de la ultimul feedback) care invită userul să lase feedback pentru 100 credite
+3. **Acordare automată** — la submit, userul primește 100 credite bonus
+4. **Secțiune în Admin Panel** — tabel cu tot feedbackul: user, rating, mesaj, data — util pentru studii de caz
 
-## Technical plan
+## Plan tehnic
 
-### 1. Edge function: new `get_user_assignments` action
+### 1. Migration: tabel `feedback`
 
-Add a new action to `supabase/functions/admin-data/index.ts`:
-- Accepts `{ action: "get_user_assignments", user_id: "..." }`
-- Uses service client to query `assignments` table filtered by `user_id`
-- Returns `id, title, status, word_count, target_grade, assignment_type, created_at, updated_at`
+```sql
+CREATE TABLE public.feedback (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  rating integer NOT NULL,          -- 1-5 stars
+  message text,                     -- free text
+  category text DEFAULT 'general',  -- general, feature_request, bug, testimonial
+  allow_case_study boolean DEFAULT false,  -- user consents to use as case study
+  credits_awarded boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+-- RLS: users can insert own, view own; service role full access
+```
 
-### 2. Admin Dashboard UI changes (`src/pages/AdminDashboard.tsx`)
+### 2. Edge function: `admin-data` — adăugăm acțiunea `get_feedback`
 
-- Add a **"View Assignments"** button (FileText icon) next to the existing "Credits" button in each user row
-- Clicking it opens a dialog showing that user's assignments in a table:
-  - Columns: Title, Type, Grade, Word Count, Status, Created
-  - Each row has a "Open" link that navigates to `/assignment/:id`
-- Add loading state for the assignments dialog
-- Add a delete assignment action (calls a new `delete_assignment` edge function action)
+Returnează tot feedbackul cu join pe profiles (full_name, university) pentru admin.
 
-### 3. Edge function: `delete_assignment` action
+### 3. Componentă `FeedbackPopup`
 
-- Accepts `{ action: "delete_assignment", assignment_id: "..." }`
-- Uses service client to delete from `assignments` table
-- Returns success/error
+- Se montează pe Dashboard
+- Verifică: ultimul feedback al userului > 7 zile SAU niciun feedback încă + min 1 assignment completat
+- Dialog cu: rating (5 stele), mesaj text, checkbox "Allow use as case study"
+- La submit: insert în `feedback` + apel `restore_credits(user_id, 100)` prin edge function
+- Se afișează "Thank you! 100 credits added"
 
-### Files modified
+### 4. Admin Panel — tab/secțiune Feedback
 
-| File | Change |
-|------|--------|
-| `supabase/functions/admin-data/index.ts` | Add `get_user_assignments` and `delete_assignment` actions |
-| `src/pages/AdminDashboard.tsx` | Add assignments dialog with table, "View Assignments" button per user row, delete action |
+- Tabel cu: User, University, Rating, Message, Case Study?, Date
+- Filtru pe rating și case study consent
 
-No database migrations needed — uses existing tables via service role in the edge function.
+### Fișiere modificate
+
+| Fișier | Schimbare |
+|--------|-----------|
+| **Migration SQL** | Tabel `feedback` + RLS |
+| `src/components/FeedbackPopup.tsx` | Nou — pop-up component |
+| `src/pages/Dashboard.tsx` | Montează `FeedbackPopup` |
+| `supabase/functions/admin-data/index.ts` | Acțiune `get_feedback` + `award_feedback_credits` |
+| `src/pages/AdminDashboard.tsx` | Tab/secțiune Feedback cu tabel |
 
