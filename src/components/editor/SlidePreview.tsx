@@ -30,6 +30,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
   const [currentSlide, setCurrentSlide] = useState(0);
   const [editingTitle, setEditingTitle] = useState(false);
   const [editingContent, setEditingContent] = useState(false);
+  const [editText, setEditText] = useState("");
 
   const slide = slides[currentSlide];
   if (!slide) return null;
