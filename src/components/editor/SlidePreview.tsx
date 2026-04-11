@@ -480,28 +480,70 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
   const [showAddMenu, setShowAddMenu] = useState(false);
   const { toast } = useToast();
 
+  // Undo/Redo history
+  const historyRef = useRef<SlideData[][]>([initialSlides]);
+  const historyIndexRef = useRef(0);
+
   useEffect(() => {
     setSlides(initialSlides);
     setCurrentSlide(0);
+    historyRef.current = [initialSlides];
+    historyIndexRef.current = 0;
   }, [initialSlides]);
 
-  // Keyboard navigation
+  const pushHistory = useCallback((newSlides: SlideData[]) => {
+    const history = historyRef.current;
+    const idx = historyIndexRef.current;
+    // Truncate any redo states
+    historyRef.current = history.slice(0, idx + 1);
+    historyRef.current.push(JSON.parse(JSON.stringify(newSlides)));
+    // Keep max 50 states
+    if (historyRef.current.length > 50) historyRef.current.shift();
+    historyIndexRef.current = historyRef.current.length - 1;
+  }, []);
+
+  const setSlidesWithHistory = useCallback((updater: SlideData[] | ((prev: SlideData[]) => SlideData[])) => {
+    setSlides((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      pushHistory(next);
+      return next;
+    });
+  }, [pushHistory]);
+
+  const canUndo = historyIndexRef.current > 0;
+  const canRedo = historyIndexRef.current < historyRef.current.length - 1;
+
+  const undo = useCallback(() => {
+    if (historyIndexRef.current <= 0) return;
+    historyIndexRef.current -= 1;
+    setSlides(JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current])));
+  }, []);
+
+  const redo = useCallback(() => {
+    if (historyIndexRef.current >= historyRef.current.length - 1) return;
+    historyIndexRef.current += 1;
+    setSlides(JSON.parse(JSON.stringify(historyRef.current[historyIndexRef.current])));
+  }, []);
+
+  // Keyboard navigation + undo/redo
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.isContentEditable) return;
       if (e.key === "ArrowLeft") setCurrentSlide((c) => Math.max(0, c - 1));
       if (e.key === "ArrowRight") setCurrentSlide((c) => Math.min(slides.length - 1, c + 1));
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) { e.preventDefault(); undo(); }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || (e.key === "z" && e.shiftKey))) { e.preventDefault(); redo(); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [open, slides.length]);
+  }, [open, slides.length, undo, redo]);
 
   const slide = slides[currentSlide];
   if (!slide) return null;
 
   const updateSlide = (index: number, updates: Partial<SlideData>) => {
-    setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, ...updates } : s)));
+    setSlidesWithHistory((prev) => prev.map((s, i) => (i === index ? { ...s, ...updates } : s)));
   };
 
   const deleteSlide = (index: number) => {
