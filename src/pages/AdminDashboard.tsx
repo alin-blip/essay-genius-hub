@@ -14,8 +14,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  GraduationCap, Users, FileText, CreditCard, Search, ArrowLeft, Plus, Minus, ExternalLink, Trash2,
+  GraduationCap, Users, FileText, CreditCard, Search, ArrowLeft, Plus, Minus, ExternalLink, Trash2, Star, MessageSquare,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
