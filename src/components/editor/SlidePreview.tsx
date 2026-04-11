@@ -738,7 +738,7 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
             {/* Bottom bar */}
             <div className="h-12 bg-[#2d2d2d] border-t border-[#333] flex items-center justify-between px-4 shrink-0">
               <p className="text-[11px] text-[#888]">
-                Click any text to edit · Right-click thumbnails for options · Drag to reorder
+                Click any text to edit · Ctrl+Z undo · Ctrl+Y redo · Drag to reorder
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={onClose} className="h-8 text-xs bg-transparent border-[#555] text-[#ccc] hover:bg-[#3c3c3c] hover:text-white">
