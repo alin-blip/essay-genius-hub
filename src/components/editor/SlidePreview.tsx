@@ -276,12 +276,24 @@ export default function SlidePreview({ open, slides: initialSlides, theme, onClo
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="fixed inset-0 !translate-x-0 !translate-y-0 !left-0 !top-0 w-screen h-screen max-w-none p-0 gap-0 overflow-hidden border-none rounded-none bg-[#1e1e1e]">
+      <DialogContent
+        className="p-0 gap-0 overflow-hidden border-none rounded-none bg-[#1e1e1e]"
+        style={{
+          position: "fixed",
+          inset: 0,
+          width: "100vw",
+          height: "100vh",
+          maxWidth: "100vw",
+          transform: "none",
+          left: 0,
+          top: 0,
+        }}
+      >
         {/* Hidden accessible title */}
         <DialogTitle className="sr-only">Slide Preview</DialogTitle>
         <DialogDescription className="sr-only">{slides.length} slides · {theme.name}</DialogDescription>
 
-        <div className="flex h-full">
+        <div className="flex" style={{ height: "100vh" }}>
           {/* ── Thumbnail sidebar ── */}
           <div className="w-[180px] bg-[#252526] border-r border-[#333] flex flex-col shrink-0">
             <div className="px-3 py-3 border-b border-[#333]">
