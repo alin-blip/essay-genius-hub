@@ -468,6 +468,16 @@ const AssignmentEditor = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGeneratePptx}
+              disabled={generatingPptx}
+            >
+              <Presentation className="h-4 w-4 mr-1" />
+              {generatingPptx ? "Generating..." : "Generate PPTX"}
+            </Button>
           </CardContent>
         </Card>
 
