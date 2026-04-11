@@ -315,6 +315,39 @@ export type Database = {
           },
         ]
       }
+      friend_referrals: {
+        Row: {
+          created_at: string
+          credited_at: string | null
+          credits_awarded: boolean
+          id: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          credited_at?: string | null
+          credits_awarded?: boolean
+          id?: string
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          credited_at?: string | null
+          credits_awarded?: boolean
+          id?: string
+          referral_code?: string
+          referred_id?: string
+          referrer_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       generation_logs: {
         Row: {
           actual_word_count: number | null
@@ -402,6 +435,7 @@ export type Database = {
           full_name: string | null
           has_manager_addon: boolean
           id: string
+          referral_code: string | null
           subscription_plan: string
           university: string | null
           university_level: string | null
@@ -416,6 +450,7 @@ export type Database = {
           full_name?: string | null
           has_manager_addon?: boolean
           id?: string
+          referral_code?: string | null
           subscription_plan?: string
           university?: string | null
           university_level?: string | null
@@ -430,6 +465,7 @@ export type Database = {
           full_name?: string | null
           has_manager_addon?: boolean
           id?: string
+          referral_code?: string | null
           subscription_plan?: string
           university?: string | null
           university_level?: string | null
@@ -514,6 +550,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      generate_referral_code: { Args: never; Returns: string }
       is_admin_of: {
         Args: { _admin_id: string; _student_id: string }
         Returns: boolean
@@ -522,6 +559,7 @@ export type Database = {
         Args: { _affiliate_user_id: string; _referred_user_id: string }
         Returns: boolean
       }
+      lookup_referrer_by_code: { Args: { _code: string }; Returns: string }
       move_to_dlq: {
         Args: {
           dlq_name: string

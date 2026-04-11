@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Plus, FileText, CreditCard, Award, TrendingUp,
   Trash2, Sparkles, Crown, AlertTriangle,
-  Search, ArrowUpDown, ArrowUp, ArrowDown,
+  Search, ArrowUpDown, ArrowUp, ArrowDown, Gift,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -29,6 +29,7 @@ import { Progress } from "@/components/ui/progress";
 import UsageHistoryChart from "@/components/dashboard/UsageHistoryChart";
 import WordUsageCard from "@/components/dashboard/WordUsageCard";
 import InviteBanner from "@/components/InviteBanner";
+import ReferralDialog from "@/components/ReferralDialog";
 import {
   Pagination, PaginationContent, PaginationItem, PaginationLink,
   PaginationNext, PaginationPrevious, PaginationEllipsis,
@@ -71,6 +72,7 @@ const Dashboard = () => {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [filterType, setFilterType] = useState<string>("all");
   const [filterGrade, setFilterGrade] = useState<string>("all");
+  const [showReferral, setShowReferral] = useState(false);
   const ITEMS_PER_PAGE = 10;
 
   const handleSort = (key: typeof sortKey) => {
@@ -343,6 +345,26 @@ const Dashboard = () => {
             )}
           </div>
         )}
+
+        {/* Invite Friends Card */}
+        <Card className="border-accent/30 bg-gradient-to-r from-accent/5 to-accent/10 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setShowReferral(true)}>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-accent/15 flex items-center justify-center">
+                <Gift className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">Invite Friends — Get 1,500 Free Credits</p>
+                <p className="text-sm text-muted-foreground">Share your link and earn bonus words when friends join!</p>
+              </div>
+            </div>
+            <Button size="sm" className="bg-accent text-accent-foreground hover:bg-accent/90">
+              Invite
+            </Button>
+          </CardContent>
+        </Card>
+
+        <ReferralDialog open={showReferral} onOpenChange={setShowReferral} />
 
         {/* Low Credits Banner */}
         {(profile?.credits_balance ?? 0) < 500 && (
