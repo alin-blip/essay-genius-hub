@@ -1,39 +1,32 @@
 
 
-# Fix Generation Timeout for Large Assignments
+# Fix Table Rendering in Assignment Editor
 
 ## Problem
-The `generate-assignment` edge function runs sequentially: AI generation → GPTZero scan → similarity check. For large assignments (5K-10K words), GPT-5 generation alone can take 60-120s, and the post-processing pushes total time past the edge function wall-clock limit (~150s), causing "Failed to fetch" / timeout errors.
+The AI generates markdown tables (with `|` pipe syntax), but the `markdownToHtml` converter in TipTapEditor doesn't parse table syntax. Tables render as raw text with pipes instead of formatted HTML tables. TipTap also lacks table extension support.
 
-## Root cause
-- AI generation of 10K words: ~60-120s
-- GPTZero scan of 10K words: ~10-20s
-- Similarity check against 50 previous assignments: ~5-10s
-- Total: easily exceeds edge function timeout
+## Solution
 
-## Solution: Skip heavy post-checks for large assignments + add polling
+### 1. Add TipTap Table extensions
+Install `@tiptap/extension-table`, `@tiptap/extension-table-row`, `@tiptap/extension-table-header`, `@tiptap/extension-table-cell` and register them in the editor.
 
-### 1. Edge function: defer GPTZero & similarity for large word counts
-**File:** `supabase/functions/generate-assignment/index.ts`
-- If `word_count > 4000`, skip the GPTZero scan and similarity check entirely during generation
-- Set `ai_detection: null` and `similarity: null` in `generation_metadata` — the user can run these checks later from the editor (the buttons already exist)
-- This cuts ~20-30s off the critical path for large assignments
-- Also add `max_tokens` parameter to the AI call to prevent the model from generating excessively
+### 2. Parse markdown tables in `markdownToHtml()`
+Add table parsing logic to the `markdownToHtml` function that:
+- Detects consecutive lines starting with `|`
+- Skips the separator row (`|---|---|`)
+- Converts header row to `<th>` cells and data rows to `<td>` cells
+- Wraps in `<table><thead>...</thead><tbody>...</tbody></table>`
 
-### 2. Client: add polling with retries on timeout
-**File:** `src/pages/NewAssignment.tsx`
-- When a timeout is detected, poll for the completed assignment up to 5 times (every 10s) instead of checking once
-- This handles the case where the function completes after the client connection drops
-- Show a "Still working..." message during polling
+### 3. Convert HTML tables back to markdown in `htmlToMarkdown()`
+Add `table`, `thead`, `tbody`, `tr`, `th`, `td` cases to the `processNode` switch so edited tables export back to markdown correctly.
 
-### 3. Client: increase timeout for large assignments
-**File:** `src/pages/NewAssignment.tsx`
-- Scale timeout based on word count: `Math.max(300000, wordCount * 30)` (30s per 1000 words, min 5 minutes)
-- For 10K words: 5 minutes timeout
+### 4. Style tables
+Add basic table styles in the editor CSS scope so tables look clean (borders, padding, header background).
 
 ### Files modified
 | File | Change |
 |------|--------|
-| `supabase/functions/generate-assignment/index.ts` | Skip GPTZero + similarity when word_count > 4000; add max_tokens to AI call |
-| `src/pages/NewAssignment.tsx` | Polling retry loop on timeout; scale timeout to word count |
+| `package.json` | Add 4 TipTap table packages |
+| `src/components/editor/TipTapEditor.tsx` | Register table extensions, update `markdownToHtml` and `htmlToMarkdown` to handle tables |
+| `src/index.css` | Add table styling for the editor |
 
