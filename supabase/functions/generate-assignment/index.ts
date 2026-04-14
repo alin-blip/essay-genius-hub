@@ -308,6 +308,9 @@ REMEMBER: You MUST write approximately ${word_count} words (±5%). Not more, not
       });
     }
 
+    // Scale max_tokens based on word count (roughly 1.5 tokens per word + buffer)
+    const maxTokens = Math.min(32768, Math.ceil(word_count * 2.5));
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -317,6 +320,7 @@ REMEMBER: You MUST write approximately ${word_count} words (±5%). Not more, not
       body: JSON.stringify({
         model: "openai/gpt-5",
         temperature: 1,
+        max_tokens: maxTokens,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -380,106 +384,116 @@ REMEMBER: You MUST write approximately ${word_count} words (±5%). Not more, not
     const hasCaseStudies = include_case_studies && /case\s+stud/i.test(generatedContent);
 
     // --- Auto-check: AI Detection (Real GPTZero scan) ---
+    // Skip for large assignments (>4000 words) to avoid timeout
     let aiDetectionResult = null;
-    try {
-      const GPTZERO_API_KEY = Deno.env.get("GPTZERO_API_KEY");
-      if (GPTZERO_API_KEY) {
-        const gptzeroResponse = await fetch("https://api.gptzero.me/v2/predict/text", {
-          method: "POST",
-          headers: {
-            "x-api-key": GPTZERO_API_KEY,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ document: generatedContent }),
-        });
+    if (word_count <= 4000) {
+      try {
+        const GPTZERO_API_KEY = Deno.env.get("GPTZERO_API_KEY");
+        if (GPTZERO_API_KEY) {
+          const gptzeroResponse = await fetch("https://api.gptzero.me/v2/predict/text", {
+            method: "POST",
+            headers: {
+              "x-api-key": GPTZERO_API_KEY,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ document: generatedContent }),
+          });
 
-        if (gptzeroResponse.ok) {
-          const gptzeroData = await gptzeroResponse.json();
-          const doc = gptzeroData.documents?.[0];
-          if (doc) {
-            const overallScore = Math.round((doc.completely_generated_prob ?? 0) * 100);
-            const humanScore = 100 - overallScore;
-            const classification = doc.document_classification ?? "UNKNOWN";
-            const burstiness = doc.overall_burstiness != null ? Math.round(doc.overall_burstiness) : null;
-            let details = `Classification: ${classification}.`;
-            if (burstiness != null) details += ` Burstiness: ${burstiness}.`;
-            const aiSentences = (doc.sentences ?? []).filter((s: any) => s.generated_prob > 0.7).length;
-            const totalSentences = (doc.sentences ?? []).length;
-            if (totalSentences > 0) details += ` ${aiSentences}/${totalSentences} sentences flagged.`;
-            
-            aiDetectionResult = {
-              overall_score: Math.min(100, Math.max(0, overallScore)),
-              human_score: Math.min(100, Math.max(0, humanScore)),
-              details,
-            };
+          if (gptzeroResponse.ok) {
+            const gptzeroData = await gptzeroResponse.json();
+            const doc = gptzeroData.documents?.[0];
+            if (doc) {
+              const overallScore = Math.round((doc.completely_generated_prob ?? 0) * 100);
+              const humanScore = 100 - overallScore;
+              const classification = doc.document_classification ?? "UNKNOWN";
+              const burstiness = doc.overall_burstiness != null ? Math.round(doc.overall_burstiness) : null;
+              let details = `Classification: ${classification}.`;
+              if (burstiness != null) details += ` Burstiness: ${burstiness}.`;
+              const aiSentences = (doc.sentences ?? []).filter((s: any) => s.generated_prob > 0.7).length;
+              const totalSentences = (doc.sentences ?? []).length;
+              if (totalSentences > 0) details += ` ${aiSentences}/${totalSentences} sentences flagged.`;
+              
+              aiDetectionResult = {
+                overall_score: Math.min(100, Math.max(0, overallScore)),
+                human_score: Math.min(100, Math.max(0, humanScore)),
+                details,
+              };
+            }
+          } else {
+            console.error("GPTZero scan failed:", gptzeroResponse.status);
           }
-        } else {
-          console.error("GPTZero scan failed:", gptzeroResponse.status);
         }
+      } catch (e) {
+        console.error("Auto AI detection check failed:", e);
       }
-    } catch (e) {
-      console.error("Auto AI detection check failed:", e);
+    } else {
+      console.log(`Skipping GPTZero scan for large assignment (${word_count} words)`);
     }
 
     // --- Auto-check: Similarity ---
+    // Skip for large assignments (>4000 words) to avoid timeout
     let similarityResult = null;
-    try {
-      const serviceRoleKeyForSim = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const simClient = createClient(supabaseUrl, serviceRoleKeyForSim);
+    if (word_count <= 4000) {
+      try {
+        const serviceRoleKeyForSim = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const simClient = createClient(supabaseUrl, serviceRoleKeyForSim);
 
-      const { data: previousAssignments } = await simClient
-        .from("assignments")
-        .select("id, title, generated_content, humanized_content")
-        .eq("user_id", user.id)
-        .eq("status", "completed")
-        .order("created_at", { ascending: false })
-        .limit(50);
+        const { data: previousAssignments } = await simClient
+          .from("assignments")
+          .select("id, title, generated_content, humanized_content")
+          .eq("user_id", user.id)
+          .eq("status", "completed")
+          .order("created_at", { ascending: false })
+          .limit(50);
 
-      if (previousAssignments && previousAssignments.length > 0) {
-        const ngrams = (text: string, n: number): Set<string> => {
-          const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean);
-          const s = new Set<string>();
-          for (let i = 0; i <= words.length - n; i++) {
-            s.add(words.slice(i, i + n).join(" "));
+        if (previousAssignments && previousAssignments.length > 0) {
+          const ngrams = (text: string, n: number): Set<string> => {
+            const words = text.toLowerCase().replace(/[^a-z0-9\s]/g, "").split(/\s+/).filter(Boolean);
+            const s = new Set<string>();
+            for (let i = 0; i <= words.length - n; i++) {
+              s.add(words.slice(i, i + n).join(" "));
+            }
+            return s;
+          };
+          const jaccard = (a: Set<string>, b: Set<string>): number => {
+            if (a.size === 0 && b.size === 0) return 0;
+            let intersection = 0;
+            for (const x of a) if (b.has(x)) intersection++;
+            return intersection / (a.size + b.size - intersection);
+          };
+
+          const currentNgrams = ngrams(generatedContent, 4);
+          let maxSim = 0;
+          let topMatch = "";
+
+          for (const prev of previousAssignments) {
+            const prevContent = prev.humanized_content || prev.generated_content;
+            if (!prevContent) continue;
+            const sim = Math.round(jaccard(currentNgrams, ngrams(prevContent, 4)) * 100);
+            if (sim > maxSim) {
+              maxSim = sim;
+              topMatch = prev.title;
+            }
           }
-          return s;
-        };
-        const jaccard = (a: Set<string>, b: Set<string>): number => {
-          if (a.size === 0 && b.size === 0) return 0;
-          let intersection = 0;
-          for (const x of a) if (b.has(x)) intersection++;
-          return intersection / (a.size + b.size - intersection);
-        };
 
-        const currentNgrams = ngrams(generatedContent, 4);
-        let maxSim = 0;
-        let topMatch = "";
+          let verdict = "unique";
+          if (maxSim > 50) verdict = "high_similarity";
+          else if (maxSim > 25) verdict = "moderate_similarity";
+          else if (maxSim > 10) verdict = "low_similarity";
 
-        for (const prev of previousAssignments) {
-          const prevContent = prev.humanized_content || prev.generated_content;
-          if (!prevContent) continue;
-          const sim = Math.round(jaccard(currentNgrams, ngrams(prevContent, 4)) * 100);
-          if (sim > maxSim) {
-            maxSim = sim;
-            topMatch = prev.title;
-          }
+          similarityResult = {
+            overall_similarity: maxSim,
+            verdict,
+            most_similar_title: topMatch || null,
+          };
+        } else {
+          similarityResult = { overall_similarity: 0, verdict: "unique", most_similar_title: null };
         }
-
-        let verdict = "unique";
-        if (maxSim > 50) verdict = "high_similarity";
-        else if (maxSim > 25) verdict = "moderate_similarity";
-        else if (maxSim > 10) verdict = "low_similarity";
-
-        similarityResult = {
-          overall_similarity: maxSim,
-          verdict,
-          most_similar_title: topMatch || null,
-        };
-      } else {
-        similarityResult = { overall_similarity: 0, verdict: "unique", most_similar_title: null };
+      } catch (e) {
+        console.error("Auto similarity check failed:", e);
       }
-    } catch (e) {
-      console.error("Auto similarity check failed:", e);
+    } else {
+      console.log(`Skipping similarity check for large assignment (${word_count} words)`);
     }
 
     const generationMetadata = {
