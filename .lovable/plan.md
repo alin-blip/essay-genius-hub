@@ -1,45 +1,39 @@
 
 
-# Slide Preview → Full PowerPoint-like Editor
+# Fix Generation Timeout for Large Assignments
 
 ## Problem
-Current preview is view-only with basic text editing in a bottom panel. Users want to click directly on slide text to edit it inline, add/change images, and have a true PowerPoint editing experience.
+The `generate-assignment` edge function runs sequentially: AI generation → GPTZero scan → similarity check. For large assignments (5K-10K words), GPT-5 generation alone can take 60-120s, and the post-processing pushes total time past the edge function wall-clock limit (~150s), causing "Failed to fetch" / timeout errors.
 
-## Plan
+## Root cause
+- AI generation of 10K words: ~60-120s
+- GPTZero scan of 10K words: ~10-20s
+- Similarity check against 50 previous assignments: ~5-10s
+- Total: easily exceeds edge function timeout
 
-### 1. Inline text editing on the slide canvas
-- Make all text elements in `SlideCanvas` clickable and editable when in edit mode
-- Click any text (title, subtitle, bullet, quote, stat label, etc.) → it becomes a `contentEditable` field right on the canvas
-- Press Enter or click away to save
-- Remove the separate "Edit" button + bottom textarea panel — editing happens directly on the slide
+## Solution: Skip heavy post-checks for large assignments + add polling
 
-### 2. Click-to-edit image support
-- Add an "Add Image" / "Change Image" overlay button on image areas of each slide
-- When clicked, show a popover with two options:
-  - **Upload image**: file picker that converts to base64 and embeds in slide data
-  - **AI Generate**: text prompt input that calls `generate-slide-image` edge function
-- For slides without images, show a dashed placeholder area with "+" icon
-- Clicking existing images shows replace/remove options
+### 1. Edge function: defer GPTZero & similarity for large word counts
+**File:** `supabase/functions/generate-assignment/index.ts`
+- If `word_count > 4000`, skip the GPTZero scan and similarity check entirely during generation
+- Set `ai_detection: null` and `similarity: null` in `generation_metadata` — the user can run these checks later from the editor (the buttons already exist)
+- This cuts ~20-30s off the critical path for large assignments
+- Also add `max_tokens` parameter to the AI call to prevent the model from generating excessively
 
-### 3. Add new slide
-- "+" button at the bottom of the thumbnail sidebar to add a new blank slide
-- Dropdown to pick slide type (Content, Bullets, Quote, Stats, Two Column, etc.)
-- New slide is inserted after current slide with placeholder content
+### 2. Client: add polling with retries on timeout
+**File:** `src/pages/NewAssignment.tsx`
+- When a timeout is detected, poll for the completed assignment up to 5 times (every 10s) instead of checking once
+- This handles the case where the function completes after the client connection drops
+- Show a "Still working..." message during polling
 
-### 4. Drag-to-reorder slides
-- Thumbnails in the sidebar become draggable
-- Visual drag indicator shows insertion point
-- Uses simple mousedown/mousemove/mouseup or a lightweight approach
-
-### 5. Right-click context menu on slides
-- Right-click a thumbnail → Duplicate / Delete / Move Up / Move Down
-
-### 6. Better toolbar
-- Toolbar shows: slide type label, title (editable inline), image button, delete, duplicate
-- Export + Close buttons stay in bottom bar
+### 3. Client: increase timeout for large assignments
+**File:** `src/pages/NewAssignment.tsx`
+- Scale timeout based on word count: `Math.max(300000, wordCount * 30)` (30s per 1000 words, min 5 minutes)
+- For 10K words: 5 minutes timeout
 
 ### Files modified
 | File | Change |
 |------|--------|
-| `src/components/editor/SlidePreview.tsx` | Major rewrite: inline editing on canvas, image add/replace/AI-generate, add slide, reorder, context menu |
+| `supabase/functions/generate-assignment/index.ts` | Skip GPTZero + similarity when word_count > 4000; add max_tokens to AI call |
+| `src/pages/NewAssignment.tsx` | Polling retry loop on timeout; scale timeout to word count |
 
