@@ -3,6 +3,10 @@ import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import Highlight from "@tiptap/extension-highlight";
 import Typography from "@tiptap/extension-typography";
+import Table from "@tiptap/extension-table";
+import TableRow from "@tiptap/extension-table-row";
+import TableHeader from "@tiptap/extension-table-header";
+import TableCell from "@tiptap/extension-table-cell";
 import { useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,25 +41,64 @@ interface TipTapEditorProps {
 }
 
 function markdownToHtml(md: string): string {
-  return md
-    .split("\n")
-    .map((line) => {
-      if (line.startsWith("### "))
-        return `<h3>${line.slice(4)}</h3>`;
-      if (line.startsWith("## "))
-        return `<h2>${line.slice(3)}</h2>`;
-      if (line.startsWith("# "))
-        return `<h1>${line.slice(2)}</h1>`;
-      if (line.startsWith("- ") || line.startsWith("* "))
-        return `<li>${line.slice(2)}</li>`;
-      if (/^\d+\.\s/.test(line))
-        return `<li>${line.replace(/^\d+\.\s/, "")}</li>`;
-      if (line.trim() === "") return "<p></p>";
+  const lines = md.split("\n");
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Detect table block (lines starting with |)
+    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+      const tableLines: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("|") && lines[i].trim().endsWith("|")) {
+        tableLines.push(lines[i].trim());
+        i++;
+      }
+      if (tableLines.length >= 2) {
+        const parseCells = (row: string) =>
+          row.split("|").slice(1, -1).map((c) => c.trim());
+
+        const headerCells = parseCells(tableLines[0]);
+        // Skip separator row (|---|---|)
+        const dataStart = tableLines.length > 1 && /^[\s|:-]+$/.test(tableLines[1].replace(/\|/g, "").replace(/-/g, "").replace(/:/g, "").trim()) ? 2 : 1;
+
+        let html = "<table><thead><tr>";
+        headerCells.forEach((c) => {
+          let processed = c.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>");
+          html += `<th>${processed}</th>`;
+        });
+        html += "</tr></thead><tbody>";
+        for (let j = dataStart; j < tableLines.length; j++) {
+          const cells = parseCells(tableLines[j]);
+          html += "<tr>";
+          cells.forEach((c) => {
+            let processed = c.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>").replace(/\*(.*?)\*/g, "<em>$1</em>");
+            html += `<td>${processed}</td>`;
+          });
+          html += "</tr>";
+        }
+        html += "</tbody></table>";
+        result.push(html);
+      }
+      continue;
+    }
+
+    if (line.startsWith("### ")) result.push(`<h3>${line.slice(4)}</h3>`);
+    else if (line.startsWith("## ")) result.push(`<h2>${line.slice(3)}</h2>`);
+    else if (line.startsWith("# ")) result.push(`<h1>${line.slice(2)}</h1>`);
+    else if (line.startsWith("- ") || line.startsWith("* ")) result.push(`<li>${line.slice(2)}</li>`);
+    else if (/^\d+\.\s/.test(line)) result.push(`<li>${line.replace(/^\d+\.\s/, "")}</li>`);
+    else if (line.trim() === "") result.push("<p></p>");
+    else {
       let processed = line.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
       processed = processed.replace(/\*(.*?)\*/g, "<em>$1</em>");
-      return `<p>${processed}</p>`;
-    })
-    .join("");
+      result.push(`<p>${processed}</p>`);
+    }
+    i++;
+  }
+
+  return result.join("");
 }
 
 function htmlToMarkdown(html: string): string {
@@ -81,6 +124,19 @@ function htmlToMarkdown(html: string): string {
       case "li": return `- ${children}\n`;
       case "br": return "\n";
       case "mark": return children;
+      case "table": return `${children}\n`;
+      case "thead": case "tbody": return children;
+      case "tr": {
+        const cells = Array.from(el.children);
+        const row = cells.map((c) => processNode(c)).join(" | ");
+        const isHeader = cells[0]?.tagName.toLowerCase() === "th";
+        let line = `| ${row} |\n`;
+        if (isHeader) {
+          line += `| ${cells.map(() => "---").join(" | ")} |\n`;
+        }
+        return line;
+      }
+      case "th": case "td": return Array.from(el.childNodes).map(processNode).join("");
       default: return children;
     }
   }
@@ -107,6 +163,10 @@ const TipTapEditor = ({
       Placeholder.configure({ placeholder: "Start writing..." }),
       Highlight.configure({ multicolor: true }),
       Typography,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: markdownToHtml(content),
     editable,
