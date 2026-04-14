@@ -225,9 +225,10 @@ const NewAssignment = () => {
     setGenerating(true);
 
     try {
-      // Use fetch directly with a 5-minute timeout for large assignments
+      // Scale timeout: 30s per 1000 words, minimum 5 minutes
+      const timeoutMs = Math.max(300000, wordCount[0] * 30);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       const session = await supabase.auth.getSession();
       const accessToken = session.data.session?.access_token;
@@ -333,30 +334,38 @@ const NewAssignment = () => {
       const msg = err.message || "";
       const isTimeout = err.name === "AbortError" || msg.includes("Failed to send") || msg.includes("Failed to fetch") || msg.includes("504") || msg.includes("TimeoutError") || msg.includes("network") || msg.includes("aborted");
       
-      // On timeout, check if the assignment was actually created server-side
+      // On timeout, poll up to 5 times (every 10s) for the completed assignment
       if (isTimeout && user) {
-        try {
-          const { data: recentAssignment } = await supabase
-            .from("assignments")
-            .select("id")
-            .eq("user_id", user.id)
-            .eq("title", title)
-            .eq("status", "completed")
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+        const MAX_POLLS = 5;
+        const POLL_INTERVAL = 10000;
+        setProgressMessage("Still working... checking for your assignment...");
+        
+        for (let poll = 0; poll < MAX_POLLS; poll++) {
+          await new Promise(r => setTimeout(r, POLL_INTERVAL));
+          try {
+            const { data: recentAssignment } = await supabase
+              .from("assignments")
+              .select("id")
+              .eq("user_id", user.id)
+              .eq("title", title)
+              .eq("status", "completed")
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
 
-          if (recentAssignment) {
-            setGenerating(false);
-            toast({
-              title: "Assignment Generated! ✨",
-              description: "The generation took longer than expected but completed successfully.",
-            });
-            navigate(`/assignment/${recentAssignment.id}`);
-            return;
+            if (recentAssignment) {
+              setGenerating(false);
+              toast({
+                title: "Assignment Generated! ✨",
+                description: "The generation took longer than expected but completed successfully.",
+              });
+              navigate(`/assignment/${recentAssignment.id}`);
+              return;
+            }
+          } catch (checkErr) {
+            console.error(`Poll ${poll + 1} failed:`, checkErr);
           }
-        } catch (checkErr) {
-          console.error("Check for completed assignment failed:", checkErr);
+          setProgressMessage(`Still working... attempt ${poll + 2} of ${MAX_POLLS}...`);
         }
       }
       
