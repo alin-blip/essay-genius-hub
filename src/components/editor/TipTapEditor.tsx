@@ -171,6 +171,11 @@ function htmlToMarkdown(html: string): string {
       case "li": return `- ${children}\n`;
       case "br": return "\n";
       case "mark": return children;
+      case "img": {
+        const token = el.getAttribute("data-chart-token");
+        if (token) return `${token.replace(/&quot;/g, '"')}\n\n`;
+        return "";
+      }
       case "table": return `${children}\n`;
       case "thead": case "tbody": return children;
       case "tr": {
