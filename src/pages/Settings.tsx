@@ -349,6 +349,74 @@ const Settings = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Your Data (GDPR) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Data</CardTitle>
+            <CardDescription>Download a copy of your data or permanently delete your account (GDPR Art. 17 & 20).</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <p className="font-medium text-foreground">Export my data</p>
+                <p className="text-sm text-muted-foreground">Download all your assignments, profile and settings as JSON.</p>
+              </div>
+              <Button variant="outline" onClick={handleExport} disabled={exporting}>
+                <Download className="h-4 w-4 mr-2" />
+                {exporting ? "Preparing..." : "Download"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Danger Zone */}
+        <Card className="border-destructive/40">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-destructive">
+              <ShieldAlert className="h-5 w-5" />
+              Danger Zone
+            </CardTitle>
+            <CardDescription>Permanent actions that cannot be undone.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <p className="font-medium text-foreground">Delete my account</p>
+                <p className="text-sm text-muted-foreground">All assignments, folders and personal data will be permanently erased.</p>
+              </div>
+              <Button variant="destructive" onClick={() => setConfirmDeleteOpen(true)}>
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete account
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={confirmDeleteOpen} onOpenChange={(o) => { setConfirmDeleteOpen(o); if (!o) setDeleteText(""); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently erases your profile, assignments, folders and feedback. Active subscriptions are <strong>not</strong> automatically cancelled — please cancel via Billing Portal first if applicable. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="confirm-del" className="text-sm">Type <span className="font-mono font-bold">DELETE</span> to confirm:</Label>
+              <Input id="confirm-del" value={deleteText} onChange={(e) => setDeleteText(e.target.value)} placeholder="DELETE" autoComplete="off" />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => { e.preventDefault(); handleDeleteAccount(); }}
+                disabled={deleteText !== "DELETE" || deleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleting ? "Deleting..." : "Delete forever"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
     </DashboardLayout>
