@@ -40,6 +40,45 @@ interface TipTapEditorProps {
   onToggleHighlights?: () => void;
 }
 
+function chartTokenToImg(line: string): string | null {
+  const m = line.match(/\[CHART:([^\]]+)\]/i);
+  if (!m) return null;
+  try {
+    const spec = JSON.parse(m[1]);
+    if (!spec.type || !Array.isArray(spec.labels) || !Array.isArray(spec.datasets)) return null;
+    // Build a Chart.js config and call QuickChart directly from the browser
+    const palette = ["#1a365d", "#d4a843", "#2c5f2d", "#b85042", "#6d2e46", "#028090"];
+    const datasets = spec.datasets.map((ds: any, i: number) => ({
+      ...ds,
+      backgroundColor:
+        ds.backgroundColor ??
+        (spec.type === "pie" || spec.type === "doughnut"
+          ? palette.slice(0, ds.data.length)
+          : palette[i % palette.length]),
+      borderColor: spec.type === "line" ? palette[i % palette.length] : undefined,
+      borderWidth: spec.type === "line" ? 2 : 1,
+      fill: spec.type === "line" ? false : undefined,
+    }));
+    const config = {
+      type: spec.type,
+      data: { labels: spec.labels, datasets },
+      options: {
+        plugins: {
+          title: spec.title ? { display: true, text: spec.title, font: { size: 14, weight: "bold" } } : { display: false },
+          legend: { display: datasets.length > 1 || ["pie", "doughnut"].includes(spec.type) },
+        },
+        scales: ["bar", "line"].includes(spec.type) ? { y: { beginAtZero: true } } : undefined,
+      },
+    };
+    const url = `https://quickchart.io/chart?w=600&h=350&bkg=white&c=${encodeURIComponent(JSON.stringify(config))}`;
+    // Encode original token in data-attr so round-trip preserves it
+    const safeToken = m[0].replace(/"/g, "&quot;");
+    return `<p><img src="${url}" alt="${spec.title || "Chart"}" data-chart-token="${safeToken}" style="max-width:100%;height:auto;display:block;margin:1rem auto;border:1px solid hsl(var(--border));border-radius:0.5rem;" /></p>`;
+  } catch {
+    return null;
+  }
+}
+
 function markdownToHtml(md: string): string {
   const lines = md.split("\n");
   const result: string[] = [];
@@ -47,6 +86,14 @@ function markdownToHtml(md: string): string {
 
   while (i < lines.length) {
     const line = lines[i];
+
+    // Chart token line
+    const chartHtml = chartTokenToImg(line.trim());
+    if (chartHtml) {
+      result.push(chartHtml);
+      i++;
+      continue;
+    }
 
     // Detect table block (lines starting with |)
     if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
@@ -124,6 +171,11 @@ function htmlToMarkdown(html: string): string {
       case "li": return `- ${children}\n`;
       case "br": return "\n";
       case "mark": return children;
+      case "img": {
+        const token = el.getAttribute("data-chart-token");
+        if (token) return `${token.replace(/&quot;/g, '"')}\n\n`;
+        return "";
+      }
       case "table": return `${children}\n`;
       case "thead": case "tbody": return children;
       case "tr": {

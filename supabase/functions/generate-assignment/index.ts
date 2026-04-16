@@ -252,14 +252,34 @@ AI detectors measure "burstiness" — how much sentence length and complexity va
 - Include compound-complex sentences that feel slightly unwieldy — like a student trying to pack too much in
 - Mix declarative, interrogative, and occasional exclamatory sentences
 
-## DATA, CHARTS & FINANCIAL STATEMENTS
-If the assignment brief mentions charts, graphs, tables, data analysis, balance sheets, income statements, cash flow statements, trial balances, or any accounting/financial documents:
-- Create detailed markdown tables with realistic but fictional data
-- For accounting: produce properly formatted Balance Sheets, P&L / Income Statements, Cash Flow Statements with correct double-entry structure
-- For data analysis: create data tables and describe chart interpretations (bar charts, pie charts, line graphs) with textual analysis
-- Use proper accounting conventions (debits/credits, totals, sub-totals)
-- Label all figures (Figure 1, Table 1, etc.) and reference them in the text
-Note: Since output is markdown text, describe visual charts in detail and provide the underlying data in table format.
+## DATA, TABLES & VISUAL CHARTS
+${["report", "case_study", "research_project", "dissertation"].includes(assignment_type)
+  ? `**You MUST include AT LEAST ONE markdown table AND AT LEAST ONE chart in this assignment.** This is a hard requirement for ${assignment_type.replace(/_/g, " ")}s — they look unprofessional without data visualisation.`
+  : `If the assignment topic touches on data, comparisons, statistics, or trends, include at least one markdown table and consider one chart.`}
+
+### Markdown tables
+Use standard pipe syntax with a separator row:
+\`\`\`
+| Header 1 | Header 2 | Header 3 |
+| --- | --- | --- |
+| Value | Value | Value |
+\`\`\`
+For accounting (Balance Sheet / P&L / Cash Flow), use proper double-entry structure with totals/sub-totals.
+
+### Visual charts (rendered as real images in PDF/Word)
+To embed a chart, place a single line in this exact format (no other text on the line):
+\`[CHART:{"type":"bar","title":"Revenue by Quarter","labels":["Q1","Q2","Q3","Q4"],"datasets":[{"label":"Revenue (£m)","data":[12,18,22,28]}]}]\`
+
+Supported \`type\` values: "bar", "line", "pie", "doughnut".
+- Use **bar** for comparisons across categories
+- Use **line** for trends over time
+- Use **pie**/**doughnut** for proportions of a whole
+- "labels" is the X-axis (or pie slice labels). "datasets" is an array; each has "label" + "data" (numbers only, same length as labels).
+- The JSON MUST be valid (double quotes, no trailing commas) and on ONE line. Do NOT wrap it in code fences.
+- After each chart, write 2-3 sentences interpreting what the chart shows.
+- Always reference charts as "Figure 1", "Figure 2", etc., in the surrounding text.
+
+If the brief involves financial documents (Balance Sheet, P&L, Cash Flow, Trial Balance), produce them as markdown tables with correct double-entry. Label all figures (Figure 1, Table 1, etc.).
 
 ## UNIQUENESS REQUIREMENT
 Every assignment you write must be completely unique. Use this unique seed to vary your approach: ${sessionSeed}
