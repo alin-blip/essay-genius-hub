@@ -22,6 +22,13 @@ import Unsubscribe from "./pages/Unsubscribe.tsx";
 import AffiliateApply from "./pages/AffiliateApply.tsx";
 import AffiliateDashboard from "./pages/AffiliateDashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import Privacy from "./pages/legal/Privacy.tsx";
+import Terms from "./pages/legal/Terms.tsx";
+import Refund from "./pages/legal/Refund.tsx";
+import Cookies from "./pages/legal/Cookies.tsx";
+import AcceptableUse from "./pages/legal/AcceptableUse.tsx";
+import Contact from "./pages/legal/Contact.tsx";
+import CookieConsent from "@/components/CookieConsent";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +46,12 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/unsubscribe" element={<Unsubscribe />} />
             <Route path="/affiliate" element={<AffiliateApply />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/refund" element={<Refund />} />
+            <Route path="/cookies" element={<Cookies />} />
+            <Route path="/acceptable-use" element={<AcceptableUse />} />
+            <Route path="/contact" element={<Contact />} />
             <Route path="/affiliate/dashboard" element={<ProtectedRoute><AffiliateDashboard /></ProtectedRoute>} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -51,6 +64,7 @@ const App = () => (
             <Route path="/plans" element={<ProtectedRoute><Plans /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <CookieConsent />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>

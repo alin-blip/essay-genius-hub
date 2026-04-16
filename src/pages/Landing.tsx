@@ -334,10 +334,13 @@ const Landing = () => {
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} AssignmentPro. All rights reserved.
           </p>
-          <div className="flex gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-foreground transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-foreground transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-foreground transition-colors">Contact</a>
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground justify-center">
+            <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+            <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
+            <Link to="/refund" className="hover:text-foreground transition-colors">Refund</Link>
+            <Link to="/cookies" className="hover:text-foreground transition-colors">Cookies</Link>
+            <Link to="/acceptable-use" className="hover:text-foreground transition-colors">Acceptable Use</Link>
+            <Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link>
           </div>
         </div>
       </footer>
