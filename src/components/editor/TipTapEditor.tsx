@@ -21,6 +21,10 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Table as TableIcon,
+  Plus,
+  Minus,
+  Trash2,
 } from "lucide-react";
 import {
   Tooltip,
