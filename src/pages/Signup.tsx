@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { GraduationCap, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,7 @@ const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -30,6 +32,10 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreed) {
+      toast({ title: "Please accept the Terms", description: "You must agree to our Terms and Privacy Policy to create an account.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -128,7 +134,21 @@ const Signup = () => {
                   </Button>
                 </div>
               </div>
-              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading}>
+              <div className="flex items-start gap-2 pt-1">
+                <Checkbox
+                  id="agree"
+                  checked={agreed}
+                  onCheckedChange={(v) => setAgreed(v === true)}
+                  className="mt-0.5"
+                />
+                <Label htmlFor="agree" className="text-xs text-muted-foreground font-normal leading-relaxed cursor-pointer">
+                  I agree to the{" "}
+                  <Link to="/terms" target="_blank" className="text-accent hover:underline">Terms of Service</Link>,{" "}
+                  <Link to="/privacy" target="_blank" className="text-accent hover:underline">Privacy Policy</Link>, and{" "}
+                  <Link to="/acceptable-use" target="_blank" className="text-accent hover:underline">Acceptable Use Policy</Link>. I understand MyUniPal is a study aid and that submitting AI-generated work as my own may breach my university's academic integrity policy.
+                </Label>
+              </div>
+              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={loading || !agreed}>
                 {loading ? "Creating account..." : "Create Account"}
               </Button>
             </form>
