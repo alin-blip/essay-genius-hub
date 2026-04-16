@@ -21,6 +21,10 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Table as TableIcon,
+  Plus,
+  Minus,
+  Trash2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -387,6 +391,92 @@ const TipTapEditor = ({
             </TooltipTrigger>
             <TooltipContent>Redo</TooltipContent>
           </Tooltip>
+
+          <div className="w-px h-6 bg-border mx-1" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() =>
+                  editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
+                }
+              >
+                <TableIcon className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Insert Table (3x3)</TooltipContent>
+          </Tooltip>
+          {editor.isActive("table") && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => editor.chain().focus().addRowAfter().run()}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add Row Below</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => editor.chain().focus().addColumnAfter().run()}
+                  >
+                    <Plus className="h-4 w-4 rotate-90" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Add Column After</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => editor.chain().focus().deleteRow().run()}
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete Row</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => editor.chain().focus().deleteColumn().run()}
+                  >
+                    <Minus className="h-4 w-4 rotate-90" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete Column</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => editor.chain().focus().deleteTable().run()}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Delete Table</TooltipContent>
+              </Tooltip>
+            </>
+          )}
 
           {hasHighlightData && onToggleHighlights && (
             <>
