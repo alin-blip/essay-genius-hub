@@ -1,32 +1,89 @@
 
+The user wants a comprehensive QA pass before launch — verify each assignment type (essay, report, case study, etc.) generates correctly, with proper output (tables, references, charts, PowerPoint export, etc.) per type.
 
-# Fix Table Rendering in Assignment Editor
+Let me think about what we have:
+- 7 assignment types in `NewAssignment.tsx` (need to check exact list)
+- 4 grade levels
+- Word counts varying
+- Outputs: text content, references, tables, AI detection, similarity, humanization, PPTX export, DOCX/PDF export
 
-## Problem
-The AI generates markdown tables (with `|` pipe syntax), but the `markdownToHtml` converter in TipTapEditor doesn't parse table syntax. Tables render as raw text with pipes instead of formatted HTML tables. TipTap also lacks table extension support.
+This is a QA testing plan, not a build task. I need to propose a structured testing matrix the user can run through, plus identify what I should verify in code first.
 
-## Solution
+Best approach: testing matrix + automated checks where possible.
 
-### 1. Add TipTap Table extensions
-Install `@tiptap/extension-table`, `@tiptap/extension-table-row`, `@tiptap/extension-table-header`, `@tiptap/extension-table-cell` and register them in the editor.
+# QA Testing Plan — Pre-Launch Verification
 
-### 2. Parse markdown tables in `markdownToHtml()`
-Add table parsing logic to the `markdownToHtml` function that:
-- Detects consecutive lines starting with `|`
-- Skips the separator row (`|---|---|`)
-- Converts header row to `<th>` cells and data rows to `<td>` cells
-- Wraps in `<table><thead>...</thead><tbody>...</tbody></table>`
+## Objective
+Verify every assignment type produces correct output (content structure, tables, references, charts, PPTX export) before opening to paying customers.
 
-### 3. Convert HTML tables back to markdown in `htmlToMarkdown()`
-Add `table`, `thead`, `tbody`, `tr`, `th`, `td` cases to the `processNode` switch so edited tables export back to markdown correctly.
+## Testing matrix
 
-### 4. Style tables
-Add basic table styles in the editor CSS scope so tables look clean (borders, padding, header background).
+For each assignment type, run a small generation (~1500 words to save credits) and verify outputs.
 
-### Files modified
-| File | Change |
-|------|--------|
-| `package.json` | Add 4 TipTap table packages |
-| `src/components/editor/TipTapEditor.tsx` | Register table extensions, update `markdownToHtml` and `htmlToMarkdown` to handle tables |
-| `src/index.css` | Add table styling for the editor |
+| Assignment type | Must verify |
+|---|---|
+| **Essay** | Intro/body/conclusion structure, Harvard refs render, no markdown leftovers |
+| **Report** | Executive summary, sections with `##` headings, tables render as HTML (not pipes), figures mentioned |
+| **Case study** | Company context, analysis, recommendations, financial tables if applicable |
+| **Literature review** | Multiple themes, refs grouped by topic, comparative analysis |
+| **Reflective journal** | First-person voice, Gibbs/Kolb cycle if requested |
+| **Dissertation chapter** | Chapter structure, subsections, methodology language |
+| **Business plan** | Market analysis, financials, SWOT tables |
 
+## What to verify per generated assignment
+
+1. **Editor display**
+   - Headings styled (not raw `##`)
+   - Tables rendered as HTML grid (not `| col1 | col2 |`)
+   - Bold/italic working
+   - References list at bottom
+
+2. **AI detection & similarity**
+   - For ≤4000 words: scores show automatically
+   - For >4000 words: "Run check" buttons appear (deferred per recent fix)
+
+3. **Humanize**
+   - Button works, progress shown, score drops
+
+4. **Exports**
+   - **DOCX** — opens in Word, headings/tables preserved
+   - **PDF** — pagination clean, tables formatted
+   - **TXT** — plain text dump
+   - **PPTX** — opens in PowerPoint, theme applied, images on relevant slides, slide editor allows inline edit
+
+5. **PPTX editor specifically**
+   - Inline text edit on canvas
+   - Add/replace image (upload + AI generate)
+   - Add slide, reorder, delete
+   - Undo/redo
+   - Export downloads valid `.pptx`
+
+## Process
+
+### Step 1 — Code audit (I do this)
+Read `NewAssignment.tsx`, `generate-assignment/index.ts`, `AssignmentEditor.tsx` to confirm:
+- All assignment types listed in UI map to a `TYPE_STRUCTURES` entry in the edge function
+- Reference style toggle wired through
+- Table generation prompt is present for report/case study/business plan
+
+I'll report any gaps (e.g. assignment type missing in backend).
+
+### Step 2 — Guided manual test (you do this)
+I'll give you a checklist with 7 short test runs (one per type, 1500 words each = ~7×1500 = ~10.5K credits total). For each, you confirm pass/fail on the verification points above and share screenshots of any issue.
+
+### Step 3 — Fixes
+For each failure you report, I diagnose (logs + code) and fix. Common likely issues:
+- A type missing structure → AI returns generic essay
+- Tables not generated for report (prompt not strong enough)
+- PPTX theme not applied
+- Charts missing — currently no chart generation exists; we'd need to add a chart-rendering layer if business plan/report needs it
+
+### Step 4 — Charts decision
+Currently the platform does **not** generate visual charts inside assignments — only mentions tables/figures in text and generates images for PPTX slides. If you want real charts (bar/pie/line) embedded in DOCX/PDF, that's a separate feature to build (using `chart.js` server-side render → embedded PNG).
+
+I'll flag this in the audit and ask if you want to add it before launch or later.
+
+## Deliverable from Step 1
+A short report: "Backend supports types X, Y, Z correctly. Type W is missing structure. Tables prompt is weak for type V. Charts not implemented."
+
+Then we proceed to manual testing with a clear checklist.
