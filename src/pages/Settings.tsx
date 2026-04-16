@@ -121,7 +121,55 @@ const Settings = () => {
     setChangingPassword(false);
   };
 
-  if (loading) {
+  const handleExport = async () => {
+    if (!user) return;
+    setExporting(true);
+    try {
+      const [profileRes, assignmentsRes, foldersRes, feedbackRes] = await Promise.all([
+        supabase.from("profiles").select("*").eq("user_id", user.id),
+        supabase.from("assignments").select("*").eq("user_id", user.id),
+        supabase.from("folders").select("*").eq("user_id", user.id),
+        supabase.from("feedback").select("*").eq("user_id", user.id),
+      ]);
+      const payload = {
+        exported_at: new Date().toISOString(),
+        user: { id: user.id, email: user.email, created_at: user.created_at },
+        profile: profileRes.data?.[0] ?? null,
+        assignments: assignmentsRes.data ?? [],
+        folders: foldersRes.data ?? [],
+        feedback: feedbackRes.data ?? [],
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `myunipal-data-${user.id.slice(0, 8)}-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "Data exported ✓", description: "Your data has been downloaded as JSON." });
+    } catch (e: any) {
+      toast({ title: "Export failed", description: e.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteText !== "DELETE") return;
+    setDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke("delete-account");
+      if (error) throw error;
+      await supabase.auth.signOut();
+      sonnerToast.success("Your account has been deleted.");
+      navigate("/");
+    } catch (e: any) {
+      toast({ title: "Deletion failed", description: e.message, variant: "destructive" });
+      setDeleting(false);
+    }
+  };
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
