@@ -2,10 +2,10 @@ import LegalLayout from "@/components/legal/LegalLayout";
 
 const Privacy = () => (
   <LegalLayout title="Privacy Policy" lastUpdated="16 April 2026">
-    <p>This Privacy Policy explains how <strong>[COMPANY NAME] Ltd</strong> ("we", "us", "MyUniPal") collects, uses and protects your personal data when you use our service at myunipal.io and unitaskpro.org. We are the data controller for the purposes of the UK GDPR and Data Protection Act 2018.</p>
+    <p>This Privacy Policy explains how <strong>Radudotcom Limited</strong> ("we", "us", "MyUniPal") collects, uses and protects your personal data when you use our service at myunipal.io and unitaskpro.org. We are the data controller for the purposes of the UK GDPR and Data Protection Act 2018.</p>
 
     <h2>1. Who we are</h2>
-    <p>MyUniPal is operated by <strong>[COMPANY NAME] Ltd</strong>, a company registered in England and Wales (company number <strong>[NUMBER]</strong>) with registered office at <strong>[REGISTERED ADDRESS]</strong>. For any privacy enquiries contact us at <a href="mailto:support@myunipal.io">support@myunipal.io</a>.</p>
+    <p>MyUniPal is operated by <strong>Radudotcom Limited</strong>, a company registered in England and Wales (company number <strong>16125458</strong>) with registered office at <strong>59 Union Street, Dunstable, England, LU6 1EX</strong>. For any privacy enquiries contact us at <a href="mailto:support@myunipal.io">support@myunipal.io</a>.</p>
 
     <h2>2. What data we collect</h2>
     <ul>
