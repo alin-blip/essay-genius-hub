@@ -568,7 +568,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      affiliate_referred_users: {
+        Row: {
+          course_name: string | null
+          created_at: string | null
+          full_name: string | null
+          university: string | null
+          user_id: string | null
+        }
+        Insert: {
+          course_name?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          university?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          course_name?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          university?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       deduct_credits: {
