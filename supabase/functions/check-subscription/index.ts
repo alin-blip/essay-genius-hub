@@ -44,18 +44,28 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header");
+
+    // Use anon client with the user's Authorization header to validate the JWT
+    const userClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } }
+    );
+
+    // Service-role client for DB writes (bypasses RLS)
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
       { auth: { persistSession: false } }
     );
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header");
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError || !userData.user?.email) throw new Error("Not authenticated");
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    if (userError || !userData.user?.email) {
+      logStep("Auth failed", { error: userError?.message });
+      throw new Error("Not authenticated");
+    }
 
     const user = userData.user;
     logStep("User authenticated", { userId: user.id, email: user.email });
