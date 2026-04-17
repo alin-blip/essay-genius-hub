@@ -568,9 +568,68 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      affiliate_referred_users: {
+        Row: {
+          course_name: string | null
+          created_at: string | null
+          full_name: string | null
+          university: string | null
+          user_id: string | null
+        }
+        Insert: {
+          course_name?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          university?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          course_name?: string | null
+          created_at?: string | null
+          full_name?: string | null
+          university?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      accept_managed_student_invite: {
+        Args: { _invite_id: string }
+        Returns: {
+          admin_id: string
+          created_at: string
+          id: string
+          invite_email: string
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "managed_students"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      decline_managed_student_invite: {
+        Args: { _invite_id: string }
+        Returns: {
+          admin_id: string
+          created_at: string
+          id: string
+          invite_email: string
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "managed_students"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       deduct_credits: {
         Args: { p_amount: number; p_user_id: string }
         Returns: number
