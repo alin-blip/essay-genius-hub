@@ -19,8 +19,8 @@ const Contact = () => (
         <Building2 className="h-5 w-5 text-accent mt-0.5" />
         <div>
           <p className="font-semibold text-primary">Company</p>
-          <p className="text-foreground"><strong>[COMPANY NAME] Ltd</strong></p>
-          <p className="text-sm text-muted-foreground">Registered in England and Wales · Company no. <strong>[NUMBER]</strong></p>
+          <p className="text-foreground"><strong>Radudotcom Limited</strong></p>
+          <p className="text-sm text-muted-foreground">Registered in England and Wales · Company no. <strong>16125458</strong></p>
         </div>
       </div>
 
@@ -28,7 +28,7 @@ const Contact = () => (
         <MapPin className="h-5 w-5 text-accent mt-0.5" />
         <div>
           <p className="font-semibold text-primary">Registered office</p>
-          <p className="text-foreground whitespace-pre-line"><strong>[REGISTERED ADDRESS]</strong></p>
+          <p className="text-foreground whitespace-pre-line"><strong>59 Union Street{"\n"}Dunstable{"\n"}England{"\n"}LU6 1EX</strong></p>
         </div>
       </div>
     </div>
