@@ -388,25 +388,35 @@ const NewAssignment = () => {
 
   if (generating) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
-        <div className="text-center space-y-6 max-w-md px-4">
-          <div className="relative">
-            <div className="h-20 w-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto animate-pulse">
-              <Sparkles className="h-10 w-10 text-accent" />
+      <>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5">
+          <div className="text-center space-y-6 max-w-md px-4">
+            <div className="relative">
+              <div className="h-20 w-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto animate-pulse">
+                <Sparkles className="h-10 w-10 text-accent" />
+              </div>
             </div>
+            <h2 className="text-2xl font-bold text-primary">Generating Your Assignment</h2>
+            <p className="text-muted-foreground">
+              Crafting your {assignmentType.replace(/_/g, " ")} with{" "}
+              {GRADES.find((g) => g.value === targetGrade)?.label} quality...
+            </p>
+            <div className="space-y-2">
+              <Progress value={progressValue} className="h-2" />
+              <p className="text-sm text-muted-foreground">{progressMessage}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">This may take 30-60 seconds for longer assignments</p>
           </div>
-          <h2 className="text-2xl font-bold text-primary">Generating Your Assignment</h2>
-          <p className="text-muted-foreground">
-            Crafting your {assignmentType.replace(/_/g, " ")} with{" "}
-            {GRADES.find((g) => g.value === targetGrade)?.label} quality...
-          </p>
-          <div className="space-y-2">
-            <Progress value={progressValue} className="h-2" />
-            <p className="text-sm text-muted-foreground">{progressMessage}</p>
-          </div>
-          <p className="text-xs text-muted-foreground">This may take 30-60 seconds for longer assignments</p>
         </div>
-      </div>
+        <AcademicIntegrityModal
+          open={!!pendingAssignmentId}
+          onContinue={() => {
+            const id = pendingAssignmentId;
+            setPendingAssignmentId(null);
+            if (id) navigate(`/assignment/${id}`);
+          }}
+        />
+      </>
     );
   }
 
