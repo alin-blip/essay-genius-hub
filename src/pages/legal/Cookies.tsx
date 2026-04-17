@@ -1,7 +1,13 @@
 import LegalLayout from "@/components/legal/LegalLayout";
+import Seo from "@/components/Seo";
 
 const Cookies = () => (
   <LegalLayout title="Cookie Policy" lastUpdated="16 April 2026">
+    <Seo
+      title="Cookie Policy — MyUniPal"
+      description="How MyUniPal uses cookies and similar technologies, the categories we use and how to manage your preferences."
+      path="/cookies"
+    />
     <p>This Cookie Policy explains how MyUniPal uses cookies and similar technologies. It should be read alongside our <a href="/privacy">Privacy Policy</a>.</p>
 
     <h2>1. What are cookies?</h2>

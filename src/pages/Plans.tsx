@@ -1,4 +1,5 @@
 import DashboardLayout from "@/components/DashboardLayout";
+import Seo from "@/components/Seo";
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,11 @@ const Plans = () => {
 
   return (
     <DashboardLayout>
+    <Seo
+      title="Pricing & Plans — MyUniPal"
+      description="Choose a MyUniPal plan: free trial, monthly student plans and agent plans. Generate UK-grade essays, reports and dissertations with Harvard referencing."
+      path="/plans"
+    />
     <div className="bg-secondary/20 min-h-full">
 
       <div className="container py-8 max-w-6xl space-y-8">

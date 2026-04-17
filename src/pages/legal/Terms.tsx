@@ -1,7 +1,13 @@
 import LegalLayout from "@/components/legal/LegalLayout";
+import Seo from "@/components/Seo";
 
 const Terms = () => (
   <LegalLayout title="Terms of Service" lastUpdated="16 April 2026">
+    <Seo
+      title="Terms of Service — MyUniPal"
+      description="Terms governing your use of MyUniPal by Radudotcom Limited — accounts, subscriptions, academic integrity, refunds and liability."
+      path="/terms"
+    />
     <p>These Terms form a binding agreement between you and <strong>Radudotcom Limited</strong> ("MyUniPal", "we") governing your use of the service at myunipal.io and unitaskpro.org. By creating an account you agree to these Terms, our <a href="/privacy">Privacy Policy</a> and our <a href="/acceptable-use">Acceptable Use Policy</a>.</p>
 
     <h2>1. The service</h2>

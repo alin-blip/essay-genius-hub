@@ -1,7 +1,13 @@
 import LegalLayout from "@/components/legal/LegalLayout";
+import Seo from "@/components/Seo";
 
 const Refund = () => (
   <LegalLayout title="Refund Policy" lastUpdated="16 April 2026">
+    <Seo
+      title="Refund Policy — MyUniPal"
+      description="MyUniPal refund policy: digital content waiver, subscription cancellations, refund eligibility and how to request a refund."
+      path="/refund"
+    />
     <h2>1. Digital content waiver — please read</h2>
     <p>MyUniPal delivers <strong>digital content that is supplied immediately</strong>. Under regulation 37 of the Consumer Contracts (Information, Cancellation and Additional Charges) Regulations 2013, when you click <strong>"Generate"</strong> you:</p>
     <ul>

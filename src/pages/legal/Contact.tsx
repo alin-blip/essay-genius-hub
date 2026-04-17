@@ -1,8 +1,14 @@
 import LegalLayout from "@/components/legal/LegalLayout";
+import Seo from "@/components/Seo";
 import { Mail, MapPin, Building2 } from "lucide-react";
 
 const Contact = () => (
   <LegalLayout title="Contact Us" lastUpdated="16 April 2026">
+    <Seo
+      title="Contact Us — MyUniPal"
+      description="Get in touch with the MyUniPal team. Email support for accounts, billing, refunds, technical issues and GDPR requests."
+      path="/contact"
+    />
     <p>We're a small UK team and we read every message. The fastest way to reach us is by email — we usually respond within one working day.</p>
 
     <div className="not-prose grid gap-4 my-8">

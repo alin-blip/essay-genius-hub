@@ -1,7 +1,13 @@
 import LegalLayout from "@/components/legal/LegalLayout";
+import Seo from "@/components/Seo";
 
 const Privacy = () => (
   <LegalLayout title="Privacy Policy" lastUpdated="16 April 2026">
+    <Seo
+      title="Privacy Policy — MyUniPal"
+      description="How MyUniPal (Radudotcom Limited) collects, uses and protects your personal data under UK GDPR. Read our full privacy policy."
+      path="/privacy"
+    />
     <p>This Privacy Policy explains how <strong>Radudotcom Limited</strong> ("we", "us", "MyUniPal") collects, uses and protects your personal data when you use our service at myunipal.io and unitaskpro.org. We are the data controller for the purposes of the UK GDPR and Data Protection Act 2018.</p>
 
     <h2>1. Who we are</h2>
