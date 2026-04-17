@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Link as RouterLink } from "react-router-dom";
+import AcademicIntegrityModal from "@/components/AcademicIntegrityModal";
 
 const ASSIGNMENT_TYPES = [
   { value: "essay", label: "Essay" },
