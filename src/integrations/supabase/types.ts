@@ -612,6 +612,24 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      decline_managed_student_invite: {
+        Args: { _invite_id: string }
+        Returns: {
+          admin_id: string
+          created_at: string
+          id: string
+          invite_email: string
+          status: string
+          student_id: string | null
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "managed_students"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       deduct_credits: {
         Args: { p_amount: number; p_user_id: string }
         Returns: number
