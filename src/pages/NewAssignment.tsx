@@ -79,6 +79,7 @@ const NewAssignment = () => {
   const [monthlyCount, setMonthlyCount] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
+  const [pendingAssignmentId, setPendingAssignmentId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, subscription } = useAuth();
@@ -328,7 +329,11 @@ const NewAssignment = () => {
           title: "Assignment Generated! ✨",
           description: `${report?.actual_word_count?.toLocaleString() || data.credits_used.toLocaleString()} words generated. ${data.credits_remaining.toLocaleString()} words remaining.${extraInfo}`,
         });
-        navigate(`/assignment/${data.assignment_id}`);
+        try {
+          const count = parseInt(localStorage.getItem("ai-warning-shown-count") || "0", 10) + 1;
+          localStorage.setItem("ai-warning-shown-count", String(count));
+        } catch {}
+        setPendingAssignmentId(data.assignment_id);
       }, 1000);
     } catch (err: any) {
       console.error("Generation error:", err);
