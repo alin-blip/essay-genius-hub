@@ -45,6 +45,7 @@ import ReferenceValidator from "@/components/editor/ReferenceValidator";
 import GenerationReport from "@/components/editor/GenerationReport";
 import SimilarityScore from "@/components/editor/SimilarityScore";
 import DeepHumanizeProgress, { type PassResult } from "@/components/editor/DeepHumanizeProgress";
+import AcademicIntegrityBanner from "@/components/AcademicIntegrityBanner";
 
 const GRADE_LABELS: Record<string, string> = {
   pass: "Pass",
@@ -374,6 +375,8 @@ const AssignmentEditor = () => {
     <div className="bg-secondary/20 min-h-full">
 
       <div className="container py-8 max-w-5xl space-y-6">
+        <AcademicIntegrityBanner />
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
           <div>
