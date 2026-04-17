@@ -57,10 +57,9 @@ export default function InviteBanner() {
   const handleAccept = async (invite: PendingInvite) => {
     if (!user) return;
     setProcessing(invite.id);
-    const { error } = await supabase
-      .from("managed_students")
-      .update({ status: "accepted", student_id: user.id })
-      .eq("id", invite.id);
+    const { error } = await supabase.rpc("accept_managed_student_invite", {
+      _invite_id: invite.id,
+    });
 
     if (error) {
       toast.error("Failed to accept invite");
@@ -73,10 +72,9 @@ export default function InviteBanner() {
 
   const handleDecline = async (invite: PendingInvite) => {
     setProcessing(invite.id);
-    const { error } = await supabase
-      .from("managed_students")
-      .update({ status: "revoked" })
-      .eq("id", invite.id);
+    const { error } = await supabase.rpc("decline_managed_student_invite", {
+      _invite_id: invite.id,
+    });
 
     if (error) {
       toast.error("Failed to decline invite");

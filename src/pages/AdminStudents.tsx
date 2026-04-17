@@ -99,7 +99,7 @@ export default function AdminStudents() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel('managed-students-changes')
+      .channel(`managed-students-changes:${user.id}`)
       .on(
         'postgres_changes',
         {
