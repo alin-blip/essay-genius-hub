@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { GraduationCap, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import Seo from "@/components/Seo";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -39,6 +40,12 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 px-4">
+      <Seo
+        title="Log in — MyUniPal"
+        description="Log in to MyUniPal to continue writing UK university assignments with AI assistance, Harvard referencing and plagiarism checks."
+        path="/login"
+        noIndex
+      />
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">

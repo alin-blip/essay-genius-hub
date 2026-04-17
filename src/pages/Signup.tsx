@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { GraduationCap, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import Seo from "@/components/Seo";
 
 const Signup = () => {
   const [fullName, setFullName] = useState("");
@@ -75,6 +76,11 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-accent/5 px-4">
+      <Seo
+        title="Sign up — MyUniPal"
+        description="Create your free MyUniPal account and get 5,000 free words. AI-powered UK university assignment writing with Harvard referencing — no credit card required."
+        path="/signup"
+      />
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">

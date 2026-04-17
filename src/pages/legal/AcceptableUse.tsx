@@ -1,7 +1,13 @@
 import LegalLayout from "@/components/legal/LegalLayout";
+import Seo from "@/components/Seo";
 
 const AcceptableUse = () => (
   <LegalLayout title="Acceptable Use Policy" lastUpdated="16 April 2026">
+    <Seo
+      title="Acceptable Use Policy — MyUniPal"
+      description="MyUniPal Acceptable Use Policy — academic integrity, prohibited uses, output review obligations and reporting abuse."
+      path="/acceptable-use"
+    />
     <p>This Acceptable Use Policy ("AUP") forms part of our <a href="/terms">Terms of Service</a>. Breach of this AUP may lead to immediate suspension or termination of your account without refund.</p>
 
     <h2>1. Academic integrity (the most important section)</h2>
